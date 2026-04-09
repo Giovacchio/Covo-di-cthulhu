@@ -530,11 +530,11 @@ function Watched({ data, save }) {
 
 /* ════════════════ PLANNER ════════════════ */
 function Planner({ data, save }) {
-  const [form, setForm] = useState({ date: "", movie: "", snack: "", note: "" });
+  const [form, setForm] = useState({ date: "", time: "", movie: "", activity: "", place: "", food: "", drink: "", note: "" });
   const add = () => {
     if (!form.date) return;
     save({ ...data, plans: [...data.plans, { ...form, id: Date.now() }] });
-    setForm({ date: "", movie: "", snack: "", note: "" });
+    setForm({ date: "", time: "", movie: "", activity: "", place: "", food: "", drink: "", note: "" });
   };
   const rm = (id) => save({ ...data, plans: data.plans.filter((p) => p.id !== id) });
 
@@ -542,24 +542,33 @@ function Planner({ data, save }) {
     <div style={S.sec}>
       <h2 style={S.secTitle}>🕯️ Date Night Planner</h2>
       <div style={S.formGroup}>
-        <input type="date" style={S.input} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input type="date" style={S.input} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <input type="time" style={{ ...S.input, maxWidth: 120 }} value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+        </div>
         <select style={S.input} value={form.movie} onChange={(e) => setForm({ ...form, movie: e.target.value })}>
-          <option value="">— Film —</option>
+          <option value="">🎬 Film (opzionale)</option>
           {data.movies.map((m) => <option key={m}>{m}</option>)}
         </select>
-        <input style={S.input} placeholder="Snack 🍕🍫🍷" value={form.snack} onChange={(e) => setForm({ ...form, snack: e.target.value })} />
-        <input style={S.input} placeholder="Note..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        <input style={S.input} placeholder="🎭 Attività (cinema, passeggiata, gioco...)" value={form.activity} onChange={(e) => setForm({ ...form, activity: e.target.value })} />
+        <input style={S.input} placeholder="📍 Dove (casa, ristorante, parco...)" value={form.place} onChange={(e) => setForm({ ...form, place: e.target.value })} />
+        <input style={S.input} placeholder="🍕 Cibo" value={form.food} onChange={(e) => setForm({ ...form, food: e.target.value })} />
+        <input style={S.input} placeholder="🍷 Bevande" value={form.drink} onChange={(e) => setForm({ ...form, drink: e.target.value })} />
+        <input style={S.input} placeholder="📝 Note..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         <button style={S.bigBtn} onClick={add}>+ Pianifica Serata</button>
       </div>
       {data.plans.length === 0 && <p style={S.empty}>Nessuna serata pianificata!</p>}
       {[...data.plans].reverse().map((p) => (
         <div key={p.id} style={S.planCard}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: 700, color: "#c4a0ff" }}>📅 {p.date}</span>
+            <span style={{ fontWeight: 700, color: "#c4a0ff" }}>📅 {p.date}{p.time ? ` · 🕐 ${p.time}` : ""}</span>
             <button style={S.xBtn} onClick={() => rm(p.id)}>✕</button>
           </div>
           {p.movie && <div>🎬 {p.movie}</div>}
-          {p.snack && <div>🍿 {p.snack}</div>}
+          {p.activity && <div>🎭 {p.activity}</div>}
+          {p.place && <div>📍 {p.place}</div>}
+          {p.food && <div>🍕 {p.food}</div>}
+          {p.drink && <div>🍷 {p.drink}</div>}
           {p.note && <div style={{ fontSize: 12, color: "#8888aa", fontStyle: "italic" }}>"{p.note}"</div>}
         </div>
       ))}
