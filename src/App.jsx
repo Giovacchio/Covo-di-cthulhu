@@ -14,6 +14,7 @@ const SECTIONS = [
   { id: "planner", icon: "🕯️", label: "Date Night" },
   { id: "reviews", icon: "📝", label: "Recensioni" },
   { id: "wishlist", icon: "💫", label: "Wishlist" },
+  { id: "gusti", icon: "💚", label: "I Nostri Gusti" },
   { id: "stats", icon: "📊", label: "Statistiche" },
 ];
 
@@ -44,7 +45,7 @@ const RAND_ACT = ["Film a casa", "Cinema", "Passeggiata", "Gioco da tavolo", "Cu
 const RAND_FOOD = ["Pizza", "Sushi", "Pasta", "Hamburger", "Poke bowl", "Tacos", "Popcorn e snack", "Aperitivo", "Dolci fatti in casa"];
 const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", "Cioccolata calda", "Spritz", "Succo di frutta", "Bollicine"];
 
-const EMPTY = { movies: [], votes: {}, watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [] };
+const EMPTY = { movies: [], votes: {}, watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [], gusti: [] };
 
 function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return `hsl(${Math.abs(h) % 360}, 50%, 38%)`; }
 function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -127,7 +128,7 @@ export default function App() {
 
   if (!role) return (
     <div style={{ ...S.authPage, animation: "fade-in 0.5s ease" }}>
-      <img src={user.photoURL} alt="" style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #9b59b6" }} />
+      <img src={user.photoURL} alt="" style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid #2d6a4f" }} />
       <p style={{ color: "#e0e0f0", margin: "12px 0 4px", fontWeight: 700 }}>Ciao {user.displayName}!</p>
       <p style={{ color: "#6a6a8a", fontSize: 13, margin: "0 0 20px" }}>Chi sei nel Covo?</p>
       <div style={{ display: "flex", gap: 16 }}>
@@ -152,6 +153,7 @@ export default function App() {
       {screen === "planner" && <Planner data={data} save={save} />}
       {screen === "reviews" && <Reviews data={data} save={save} role={role} />}
       {screen === "wishlist" && <Wishlist data={data} save={save} role={role} />}
+      {screen === "gusti" && <Gusti data={data} save={save} role={role} />}
       {screen === "stats" && <Stats data={data} />}
     </div></div></>
   );
@@ -185,13 +187,13 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
     <div style={S.hub}>
       <div style={{ ...S.userBar, animation: "fade-in 0.4s ease" }}>
         <img src={user.photoURL} alt="" style={S.avatar} />
-        <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0f0" }}>{user.displayName} <span style={{ color: "#9b59b6", fontSize: 11 }}>({role})</span></div>{oN && <div style={{ fontSize: 11, color: "#6a6a8a" }}>con {oN} 💜</div>}</div>
+        <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0f0" }}>{user.displayName} <span style={{ color: "#2d6a4f", fontSize: 11 }}>({role})</span></div>{oN && <div style={{ fontSize: 11, color: "#6a6a8a" }}>con {oN} 💜</div>}</div>
         <button style={S.linkBtn} onClick={logout}>Esci</button>
       </div>
 
       <div style={{ ...S.annivBanner, animation: "fade-in 0.5s ease 0.1s both" }}>
         {!anniversary || editingDate ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}><span style={{ fontSize: 13, color: "#c4a0ff" }}>💜 Quando è il vostro anniversario?</span><input type="date" style={{ ...S.input, textAlign: "center", maxWidth: 200 }} defaultValue={anniversary || ""} onChange={(e) => e.target.value && setAnniv(e.target.value)} /></div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}><span style={{ fontSize: 13, color: "#74c69d" }}>💜 Quando è il vostro anniversario?</span><input type="date" style={{ ...S.input, textAlign: "center", maxWidth: 200 }} defaultValue={anniversary || ""} onChange={(e) => e.target.value && setAnniv(e.target.value)} /></div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
             <div style={{ fontSize: 11, color: "#6a6a8a", cursor: "pointer" }} onClick={() => setEditingDate(true)}>💜 Insieme da {ai.y > 0 ? `${ai.y} ann${ai.y > 1 ? "i" : "o"} e ` : ""}{ai.m} mes{ai.m !== 1 ? "i" : "e"} · ✏️</div>
@@ -244,7 +246,7 @@ function Wheel({ movies }) {
       {movies.length < 2 ? <p style={S.empty}>Servono almeno 2 film!</p> : <>
         <div style={{ position: "relative" }}><div style={S.pointer}>▼</div>
           <svg width={sz} height={sz} style={{ transition: spinning ? "transform 3.5s cubic-bezier(.17,.67,.12,.99)" : "none", transform: `rotate(${rot}deg)` }}>
-            {movies.map((m, i) => { const a1=i*seg, a2=a1+seg; const [x1,y1]=pol(a1,r); const [x2,y2]=pol(a2,r); const lg=seg>180?1:0; const mid=a1+seg/2; const [tx,ty]=pol(mid,r*0.6); return <g key={i}><path d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} Z`} fill={hash(m)} stroke="#0d1117" strokeWidth="2" /><text x={tx} y={ty} fill="#fff" fontSize={movies.length>8?8:10} fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${mid},${tx},${ty})`}>{m.length>13?m.slice(0,11)+"…":m}</text></g>; })}
+            {movies.map((m, i) => { const a1=i*seg, a2=a1+seg; const [x1,y1]=pol(a1,r); const [x2,y2]=pol(a2,r); const lg=seg>180?1:0; const mid=a1+seg/2; const [tx,ty]=pol(mid,r*0.6); return <g key={i}><path d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} Z`} fill={hash(m)} stroke="#0a1f16" strokeWidth="2" /><text x={tx} y={ty} fill="#fff" fontSize={movies.length>8?8:10} fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${mid},${tx},${ty})`}>{m.length>13?m.slice(0,11)+"…":m}</text></g>; })}
           </svg></div>
         <button style={{ ...S.bigBtn, opacity: spinning ? 0.5 : 1 }} onClick={spin} disabled={spinning}>{spinning ? "Girando..." : "🐙 Estrai dal Covo!"}</button>
         {picked && <div style={{ ...S.pickedCard, animation: "pop-in 0.5s ease" }}><div style={S.pickedLbl}>Stasera guardiamo:</div><div style={S.pickedTxt}>{picked}</div></div>}
@@ -260,13 +262,13 @@ function Votes({ data, save, role }) {
   const sorted = [...data.movies].sort((a,b) => { const sa=(data.votes[a]?.lui||0)+(data.votes[a]?.lei||0); const sb=(data.votes[b]?.lui||0)+(data.votes[b]?.lei||0); return sb-sa; });
   return (
     <div style={S.sec}><h2 style={S.secTitle}>⭐ Votazione</h2>
-      <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Stai votando come <strong style={{ color: "#c4a0ff" }}>{role}</strong></p>
+      <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Stai votando come <strong style={{ color: "#74c69d" }}>{role}</strong></p>
       {sorted.length === 0 && <p style={S.empty}>Aggiungi film prima!</p>}
       {sorted.map((m, i) => { const v = data.votes[m]||{lui:0,lei:0}; const t = v.lui+v.lei; const re = (data.reactions||{})[m]||{}; return (
         <div key={m} style={{ ...S.voteCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontWeight: 700, fontSize: 14 }}>{m}</span><span style={S.badge}>{t} voti</span></div>
           <div style={{ display: "flex", gap: 6 }}><button style={S.vBtn} onClick={() => vote(m)}>{role==="lui"?"🙋‍♂️":"🙋‍♀️"} Vota!</button><div style={{ ...S.vBtn, background: "transparent", textAlign: "center", cursor: "default" }}>🙋‍♂️ {v.lui} · 🙋‍♀️ {v.lei}</div><button style={S.rstBtn} onClick={() => reset(m)}>↺</button></div>
-          <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>{REACTIONS.map(e => <button key={e} onClick={() => react(m,e)} style={{ ...S.emojiBtn, background: re[role]===e ? "rgba(155,89,182,0.3)" : "transparent" }}>{e}</button>)}</div>
+          <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>{REACTIONS.map(e => <button key={e} onClick={() => react(m,e)} style={{ ...S.emojiBtn, background: re[role]===e ? "rgba(45,106,79,0.3)" : "transparent" }}>{e}</button>)}</div>
           {(re.lui||re.lei) && <div style={{ fontSize: 11, color: "#8888aa" }}>{re.lui && <span>🙋‍♂️ {re.lui} </span>}{re.lei && <span>🙋‍♀️ {re.lei}</span>}</div>}
           {t > 0 && <div style={S.bar}><div style={{ ...S.barL, width: `${(v.lui/t)*100}%` }} /><div style={{ ...S.barR, width: `${(v.lei/t)*100}%` }} /></div>}
         </div>); })}
@@ -303,7 +305,7 @@ function Planner({ data, save }) {
         <button style={S.bigBtn} onClick={add}>+ Pianifica Serata</button>
       </div>
       {data.plans.length === 0 && <p style={S.empty}>Nessuna serata pianificata!</p>}
-      {[...data.plans].reverse().map((p, i) => <div key={p.id} style={{ ...S.planCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}><div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 700, color: "#c4a0ff" }}>📅 {p.date}{p.time?` · 🕐 ${p.time}`:""}</span><button style={S.xBtn} onClick={() => rm(p.id)}>✕</button></div>{p.movie&&<div>🎬 {p.movie}</div>}{p.activity&&<div>🎭 {p.activity}</div>}{p.place&&<div>📍 {p.place}</div>}{p.food&&<div>🍕 {p.food}</div>}{p.drink&&<div>🍷 {p.drink}</div>}{p.note&&<div style={{ fontSize: 12, color: "#8888aa", fontStyle: "italic" }}>"{p.note}"</div>}</div>)}
+      {[...data.plans].reverse().map((p, i) => <div key={p.id} style={{ ...S.planCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}><div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 700, color: "#74c69d" }}>📅 {p.date}{p.time?` · 🕐 ${p.time}`:""}</span><button style={S.xBtn} onClick={() => rm(p.id)}>✕</button></div>{p.movie&&<div>🎬 {p.movie}</div>}{p.activity&&<div>🎭 {p.activity}</div>}{p.place&&<div>📍 {p.place}</div>}{p.food&&<div>🍕 {p.food}</div>}{p.drink&&<div>🍷 {p.drink}</div>}{p.note&&<div style={{ fontSize: 12, color: "#8888aa", fontStyle: "italic" }}>"{p.note}"</div>}</div>)}
     </div>
   );
 }
@@ -315,7 +317,7 @@ function Reviews({ data, save, role }) {
   const rev = Object.entries(data.reviews||{}).sort((a,b) => (b[1].avg||0)-(a[1].avg||0));
   return (
     <div style={S.sec}><h2 style={S.secTitle}>📝 Recensioni</h2>
-      <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Recensisci come <strong style={{ color: "#c4a0ff" }}>{role}</strong></p>
+      <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Recensisci come <strong style={{ color: "#74c69d" }}>{role}</strong></p>
       <div style={S.formGroup}>
         <select style={S.input} value={sel} onChange={e => setSel(e.target.value)}><option value="">— Scegli film —</option>{all.map(m => <option key={m}>{m}</option>)}</select>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}><label style={{ fontSize: 13, width: 60 }}>{role==="lui"?"🙋‍♂️":"🙋‍♀️"} Voto</label><input type="range" min="1" max="10" value={score} onChange={e => setScore(+e.target.value)} style={{ flex: 1 }} /><span style={S.scoreBadge}>{score}</span></div>
@@ -337,13 +339,90 @@ function Wishlist({ data, save, role }) {
   return (
     <div style={S.sec}><h2 style={S.secTitle}>💫 Wishlist Condivisa</h2>
       <div style={S.formGroup}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{WISH_TYPES.map(wt => <button key={wt.id} onClick={() => setType(wt.id)} style={{ ...S.catChip, background: type===wt.id?"rgba(155,89,182,0.25)":"transparent", borderColor: type===wt.id?"#9b59b6":"rgba(255,255,255,0.06)" }}>{wt.icon} {wt.label}</button>)}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{WISH_TYPES.map(wt => <button key={wt.id} onClick={() => setType(wt.id)} style={{ ...S.catChip, background: type===wt.id?"rgba(45,106,79,0.25)":"transparent", borderColor: type===wt.id?"#2d6a4f":"rgba(255,255,255,0.06)" }}>{wt.icon} {wt.label}</button>)}</div>
         <input style={S.input} value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => e.key==="Enter"&&add()} placeholder="Cosa volete fare/vedere/provare?" />
         <input style={S.input} value={note} onChange={e => setNote(e.target.value)} placeholder="📝 Note (opzionale)" />
         <button style={S.bigBtn} onClick={add}>+ Aggiungi alla Wishlist</button>
       </div>
       {Object.keys(grouped).length === 0 && <p style={S.empty}>La wishlist è vuota!</p>}
       {WISH_TYPES.map(wt => { const items = grouped[wt.id]; if (!items) return null; return <div key={wt.id}><h3 style={{ fontSize: 14, color: "#8888aa", margin: "8px 0 6px" }}>{wt.icon} {wt.label}</h3>{items.map((w, i) => <div key={w.id} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, opacity: w.done?0.5:1 }}><button style={{ ...S.emojiBtn, fontSize: 18 }} onClick={() => toggle(w.id)}>{w.done?"✅":"⬜"}</button><div style={{ flex: 1 }}><div style={{ ...S.itemText, textDecoration: w.done?"line-through":"none" }}>{w.title}</div>{w.note&&<div style={{ fontSize: 11, color: "#6a6a8a" }}>{w.note}</div>}<div style={{ fontSize: 10, color: "#4a4a6a" }}>aggiunto da {w.addedBy==="lui"?"🙋‍♂️":"🙋‍♀️"} · {w.date}</div></div><button style={S.xBtn} onClick={() => rm(w.id)}>✕</button></div>)}</div>; })}
+    </div>
+  );
+}
+
+const GUSTI_CATS = [
+  { id: "cibo", icon: "🍕", label: "Cibo" },
+  { id: "musica", icon: "🎵", label: "Musica" },
+  { id: "hobby", icon: "🎮", label: "Hobby" },
+  { id: "viaggio", icon: "✈️", label: "Viaggi" },
+  { id: "film_genere", icon: "🎬", label: "Film/Serie" },
+  { id: "altro_g", icon: "💚", label: "Altro" },
+];
+
+function Gusti({ data, save, role }) {
+  const [inp, setInp] = useState("");
+  const [cat, setCat] = useState("cibo");
+  const [tipo, setTipo] = useState("piace"); // piace | non_piace | entrambi
+  const gusti = data.gusti || [];
+
+  const add = () => {
+    const t = inp.trim();
+    if (!t) return;
+    save({ ...data, gusti: [...gusti, { id: Date.now(), text: t, cat, tipo, addedBy: role, date: new Date().toLocaleDateString("it-IT") }] });
+    setInp("");
+  };
+  const rm = (id) => save({ ...data, gusti: gusti.filter(g => g.id !== id) });
+
+  const grouped = {};
+  gusti.forEach(g => { if (!grouped[g.cat]) grouped[g.cat] = []; grouped[g.cat].push(g); });
+
+  const tipoStyle = (t) => t === "piace" ? { color: "#52b788", icon: "💚" } : t === "non_piace" ? { color: "#e94560", icon: "💔" } : { color: "#f5a623", icon: "💛" };
+  const tipoLabel = (t) => t === "piace" ? "Ci piace" : t === "non_piace" ? "Non ci piace" : "Piace a entrambi";
+
+  return (
+    <div style={S.sec}>
+      <h2 style={S.secTitle}>💚 I Nostri Gusti</h2>
+      <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Annotate cosa vi piace e cosa no!</p>
+      <div style={S.formGroup}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {[{id:"piace",icon:"💚",label:"Ci piace"},{id:"non_piace",icon:"💔",label:"Non ci piace"},{id:"entrambi",icon:"💛",label:"Entrambi"}].map(t => (
+            <button key={t.id} onClick={() => setTipo(t.id)} style={{ ...S.catChip, background: tipo===t.id ? (t.id==="piace"?"rgba(82,183,136,0.25)":t.id==="non_piace"?"rgba(233,69,96,0.25)":"rgba(245,166,35,0.25)") : "transparent", borderColor: tipo===t.id ? (t.id==="piace"?"#52b788":t.id==="non_piace"?"#e94560":"#f5a623") : "rgba(255,255,255,0.06)" }}>{t.icon} {t.label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {GUSTI_CATS.map(c => (
+            <button key={c.id} onClick={() => setCat(c.id)} style={{ ...S.catChip, background: cat===c.id ? "rgba(45,106,79,0.25)" : "transparent", borderColor: cat===c.id ? "#2d6a4f" : "rgba(255,255,255,0.06)" }}>{c.icon} {c.label}</button>
+          ))}
+        </div>
+        <div style={S.row}>
+          <input style={S.input} value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => e.key==="Enter"&&add()} placeholder="Es: Pizza margherita, Rock anni 80..." />
+          <button style={S.addBtn} onClick={add}>+</button>
+        </div>
+      </div>
+
+      {Object.keys(grouped).length === 0 && <p style={S.empty}>Nessun gusto annotato ancora!</p>}
+      {GUSTI_CATS.map(gc => {
+        const items = grouped[gc.id];
+        if (!items) return null;
+        return (
+          <div key={gc.id}>
+            <h3 style={{ fontSize: 14, color: "#8888aa", margin: "8px 0 6px" }}>{gc.icon} {gc.label}</h3>
+            {items.map((g, i) => {
+              const ts = tipoStyle(g.tipo);
+              return (
+                <div key={g.id} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${ts.color}` }}>
+                  <span style={{ fontSize: 16 }}>{ts.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={S.itemText}>{g.text}</div>
+                    <div style={{ fontSize: 10, color: "#4a4a6a" }}>{tipoLabel(g.tipo)} · {g.addedBy==="lui"?"🙋‍♂️":"🙋‍♀️"} · {g.date}</div>
+                  </div>
+                  <button style={S.xBtn} onClick={() => rm(g.id)}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -367,63 +446,63 @@ function Stats({ data }) {
 }
 
 const S = {
-  loadWrap:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0d1117",fontFamily:"'Nunito',sans-serif"},
-  authPage:{fontFamily:"'Nunito',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"linear-gradient(170deg,#0d1117 0%,#161b22 40%,#1a1040 100%)",padding:24},
+  loadWrap:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a1f16",fontFamily:"'Nunito',sans-serif"},
+  authPage:{fontFamily:"'Nunito',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"linear-gradient(170deg,#0a1f16 0%,#0f2e1f 40%,#132e1a 100%)",padding:24},
   googleBtn:{display:"flex",alignItems:"center",padding:"12px 28px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.06)",color:"#e0e0f0",fontSize:15,fontWeight:700,cursor:"pointer"},
-  roleBtn:{display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"20px 28px",borderRadius:16,border:"1px solid rgba(155,89,182,0.2)",background:"rgba(255,255,255,0.04)",color:"#e0e0f0",fontSize:15,fontWeight:700,cursor:"pointer"},
+  roleBtn:{display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"20px 28px",borderRadius:16,border:"1px solid rgba(45,106,79,0.2)",background:"rgba(255,255,255,0.04)",color:"#e0e0f0",fontSize:15,fontWeight:700,cursor:"pointer"},
   linkBtn:{border:"none",background:"transparent",color:"#6a6a8a",fontSize:12,cursor:"pointer",textDecoration:"underline"},
   userBar:{display:"flex",alignItems:"center",gap:10,width:"100%",maxWidth:360,marginBottom:12,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:12},
   avatar:{width:32,height:32,borderRadius:"50%"},
-  page:{fontFamily:"'Nunito',sans-serif",maxWidth:440,margin:"0 auto",padding:16,minHeight:"100vh",background:"linear-gradient(170deg,#0d1117 0%,#161b22 40%,#1a1040 100%)",color:"#e0e0f0"},
-  hub:{fontFamily:"'Nunito',sans-serif",maxWidth:440,margin:"0 auto",padding:"24px 20px 20px",minHeight:"100vh",background:"linear-gradient(170deg,#0d1117 0%,#161b22 40%,#1a1040 100%)",color:"#e0e0f0",display:"flex",flexDirection:"column",alignItems:"center"},
-  toast:{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"rgba(155,89,182,0.9)",color:"#fff",padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:700,zIndex:9999,animation:"pop-in 0.3s ease",maxWidth:"90vw",textAlign:"center"},
-  annivBanner:{width:"100%",maxWidth:360,padding:"14px 16px",background:"rgba(155,89,182,0.08)",border:"1px solid rgba(155,89,182,0.18)",borderRadius:16,marginBottom:16},
+  page:{fontFamily:"'Nunito',sans-serif",maxWidth:440,margin:"0 auto",padding:16,minHeight:"100vh",background:"linear-gradient(170deg,#0a1f16 0%,#0f2e1f 40%,#132e1a 100%)",color:"#e0e0f0"},
+  hub:{fontFamily:"'Nunito',sans-serif",maxWidth:440,margin:"0 auto",padding:"24px 20px 20px",minHeight:"100vh",background:"linear-gradient(170deg,#0a1f16 0%,#0f2e1f 40%,#132e1a 100%)",color:"#e0e0f0",display:"flex",flexDirection:"column",alignItems:"center"},
+  toast:{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"rgba(45,106,79,0.9)",color:"#fff",padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:700,zIndex:9999,animation:"pop-in 0.3s ease",maxWidth:"90vw",textAlign:"center"},
+  annivBanner:{width:"100%",maxWidth:360,padding:"14px 16px",background:"rgba(45,106,79,0.08)",border:"1px solid rgba(45,106,79,0.18)",borderRadius:16,marginBottom:16},
   annivCd:{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginTop:4},
   annivBox:{display:"flex",flexDirection:"column",alignItems:"center",gap:2},
-  annivNum:{fontSize:28,fontWeight:900,color:"#c4a0ff",lineHeight:1},
+  annivNum:{fontSize:28,fontWeight:900,color:"#74c69d",lineHeight:1},
   annivLbl:{fontSize:10,color:"#8888aa",textAlign:"center"},
   annivDiv:{width:1,height:36,background:"rgba(255,255,255,0.08)"},
   eyeWrap:{position:"relative",width:120,height:120,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 1s ease",marginBottom:12},
   tentBg:{position:"absolute",width:"100%",height:"100%"},
-  tentLine:{position:"absolute",top:"50%",left:"50%",width:2,height:55,background:"linear-gradient(to bottom,#7b42c9,transparent)",transformOrigin:"top center",borderRadius:2,opacity:0.5},
-  eye:{width:56,height:56,borderRadius:"50%",background:"radial-gradient(circle,#4eff8a 0%,#1a8a4a 60%,#0d1117 100%)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 30px rgba(78,255,138,0.3)",zIndex:2},
-  pupil:{width:18,height:28,borderRadius:"50%",background:"#0d1117"},
-  hubTitle:{margin:"0 0 4px",fontSize:30,fontWeight:900,background:"linear-gradient(135deg,#9b59b6,#4eff8a)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-0.5},
+  tentLine:{position:"absolute",top:"50%",left:"50%",width:2,height:55,background:"linear-gradient(to bottom,#40916c,transparent)",transformOrigin:"top center",borderRadius:2,opacity:0.5},
+  eye:{width:56,height:56,borderRadius:"50%",background:"radial-gradient(circle,#95d5b2 0%,#2d6a4f 60%,#0a1f16 100%)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 30px rgba(149,213,178,0.3)",zIndex:2},
+  pupil:{width:18,height:28,borderRadius:"50%",background:"#0a1f16"},
+  hubTitle:{margin:"0 0 4px",fontSize:30,fontWeight:900,background:"linear-gradient(135deg,#2d6a4f,#95d5b2)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-0.5},
   hubSub:{margin:"0 0 16px",fontSize:13,color:"#6a6a8a"},
   suggBtn:{width:"100%",maxWidth:360,padding:"12px 0",border:"2px dashed rgba(245,166,35,0.3)",borderRadius:14,background:"rgba(245,166,35,0.06)",color:"#f5a623",fontSize:15,fontWeight:800,cursor:"pointer",marginBottom:12},
   suggCard:{width:"100%",maxWidth:360,padding:16,background:"rgba(245,166,35,0.08)",border:"1px solid rgba(245,166,35,0.2)",borderRadius:14,marginBottom:16,fontSize:14},
   grid:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,width:"100%",maxWidth:360},
-  card:{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"22px 12px",border:"1px solid rgba(155,89,182,0.15)",borderRadius:16,background:"rgba(255,255,255,0.03)",color:"#e0e0f0",fontSize:14,fontWeight:700,cursor:"pointer",transition:"transform 0.15s"},
+  card:{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"22px 12px",border:"1px solid rgba(45,106,79,0.15)",borderRadius:16,background:"rgba(255,255,255,0.03)",color:"#e0e0f0",fontSize:14,fontWeight:700,cursor:"pointer",transition:"transform 0.15s"},
   cardIcon:{fontSize:30},cardLbl:{fontSize:13},
   footer:{marginTop:32,fontSize:10,color:"#3a3a5a",textAlign:"center",fontStyle:"italic"},
-  backBtn:{border:"none",background:"rgba(155,89,182,0.15)",color:"#c4a0ff",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16},
+  backBtn:{border:"none",background:"rgba(45,106,79,0.15)",color:"#74c69d",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16},
   sec:{display:"flex",flexDirection:"column",gap:12},
-  secTitle:{fontSize:20,fontWeight:800,margin:"0 0 4px",color:"#c4a0ff"},
+  secTitle:{fontSize:20,fontWeight:800,margin:"0 0 4px",color:"#74c69d"},
   row:{display:"flex",gap:8},
   input:{flex:1,padding:"11px 14px",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,background:"rgba(255,255,255,0.05)",color:"#e0e0f0",fontSize:14,outline:"none"},
-  addBtn:{width:44,border:"none",borderRadius:10,background:"linear-gradient(135deg,#9b59b6,#6c3483)",color:"#fff",fontSize:20,fontWeight:700,cursor:"pointer"},
-  bigBtn:{padding:"13px 0",border:"none",borderRadius:12,background:"linear-gradient(135deg,#9b59b6,#4eff8a)",color:"#0d1117",fontSize:15,fontWeight:800,cursor:"pointer"},
+  addBtn:{width:44,border:"none",borderRadius:10,background:"linear-gradient(135deg,#2d6a4f,#1b4332)",color:"#fff",fontSize:20,fontWeight:700,cursor:"pointer"},
+  bigBtn:{padding:"13px 0",border:"none",borderRadius:12,background:"linear-gradient(135deg,#2d6a4f,#95d5b2)",color:"#0a1f16",fontSize:15,fontWeight:800,cursor:"pointer"},
   empty:{textAlign:"center",color:"#4a4a6a",fontSize:13,padding:28},
   item:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:"rgba(255,255,255,0.04)",borderRadius:12,marginBottom:4},
   itemText:{flex:1,fontSize:14,fontWeight:600,color:"#e0e0f0"},
   xBtn:{width:26,height:26,border:"none",borderRadius:7,background:"rgba(233,69,96,0.15)",color:"#e94560",fontSize:12,cursor:"pointer"},
   count:{textAlign:"center",fontSize:11,color:"#4a4a6a"},
-  pointer:{textAlign:"center",fontSize:26,color:"#4eff8a",marginBottom:-6,zIndex:2,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.5))"},
-  pickedCard:{marginTop:14,padding:18,background:"rgba(78,255,138,0.08)",border:"1px solid rgba(78,255,138,0.2)",borderRadius:14,textAlign:"center"},
-  pickedLbl:{fontSize:12,color:"#4eff8a",marginBottom:4,fontWeight:600},
+  pointer:{textAlign:"center",fontSize:26,color:"#95d5b2",marginBottom:-6,zIndex:2,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.5))"},
+  pickedCard:{marginTop:14,padding:18,background:"rgba(149,213,178,0.08)",border:"1px solid rgba(149,213,178,0.2)",borderRadius:14,textAlign:"center"},
+  pickedLbl:{fontSize:12,color:"#95d5b2",marginBottom:4,fontWeight:600},
   pickedTxt:{fontSize:20,fontWeight:800,color:"#fff"},
   voteCard:{padding:14,background:"rgba(255,255,255,0.04)",borderRadius:12,display:"flex",flexDirection:"column",gap:8},
-  badge:{fontSize:10,fontWeight:700,background:"rgba(155,89,182,0.2)",color:"#c4a0ff",padding:"2px 8px",borderRadius:16},
+  badge:{fontSize:10,fontWeight:700,background:"rgba(45,106,79,0.2)",color:"#74c69d",padding:"2px 8px",borderRadius:16},
   vBtn:{flex:1,padding:"9px 0",border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,background:"rgba(255,255,255,0.03)",color:"#e0e0f0",fontSize:12,fontWeight:700,cursor:"pointer"},
   rstBtn:{width:36,border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,background:"transparent",color:"#6a6a8a",fontSize:15,cursor:"pointer"},
   emojiBtn:{border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,background:"transparent",fontSize:14,padding:"4px 6px",cursor:"pointer",transition:"background 0.15s"},
   bar:{display:"flex",height:5,borderRadius:3,overflow:"hidden",background:"rgba(255,255,255,0.04)"},
   barL:{background:"#4fc3f7",transition:"width .3s"},barR:{background:"#e94560",transition:"width .3s"},
-  chip:{padding:"6px 12px",border:"1px solid rgba(78,255,138,0.2)",borderRadius:20,background:"rgba(78,255,138,0.06)",color:"#4eff8a",fontSize:12,fontWeight:600,cursor:"pointer"},
+  chip:{padding:"6px 12px",border:"1px solid rgba(149,213,178,0.2)",borderRadius:20,background:"rgba(149,213,178,0.06)",color:"#95d5b2",fontSize:12,fontWeight:600,cursor:"pointer"},
   catChip:{padding:"5px 10px",border:"1px solid rgba(255,255,255,0.06)",borderRadius:16,color:"#e0e0f0",fontSize:11,fontWeight:600,cursor:"pointer",background:"transparent"},
   formGroup:{display:"flex",flexDirection:"column",gap:10},
   planCard:{padding:14,background:"rgba(255,255,255,0.04)",borderRadius:12,display:"flex",flexDirection:"column",gap:6,fontSize:13},
   reviewCard:{padding:14,background:"rgba(255,255,255,0.04)",borderRadius:12,display:"flex",flexDirection:"column",gap:6},
-  scoreBadge:{fontSize:14,fontWeight:800,background:"rgba(155,89,182,0.2)",color:"#c4a0ff",padding:"3px 10px",borderRadius:8,minWidth:28,textAlign:"center"},
+  scoreBadge:{fontSize:14,fontWeight:800,background:"rgba(45,106,79,0.2)",color:"#74c69d",padding:"3px 10px",borderRadius:8,minWidth:28,textAlign:"center"},
   statRow:{display:"flex",alignItems:"center",gap:14,padding:"12px 14px",background:"rgba(255,255,255,0.04)",borderRadius:12},
 };
