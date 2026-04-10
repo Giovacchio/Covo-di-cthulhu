@@ -34,11 +34,39 @@ function hash(s) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [role, setRole] = useState(null); // "lui" | "lei"
+  const [role, setRole] = useState(null);
   const [data, setData] = useState(EMPTY);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState("hub");
   const [usersDoc, setUsersDoc] = useState(null);
+  const [animDir, setAnimDir] = useState("");
+
+  // Navigation with history
+  const navigate = (s) => {
+    setAnimDir("slide-in");
+    setScreen(s);
+    window.history.pushState({ screen: s }, "");
+  };
+
+  const goBack = () => {
+    setAnimDir("slide-out");
+    setScreen("hub");
+  };
+
+  useEffect(() => {
+    window.history.replaceState({ screen: "hub" }, "");
+    const handler = (e) => {
+      if (e.state?.screen) {
+        setAnimDir("slide-out");
+        setScreen(e.state.screen);
+      } else {
+        setAnimDir("slide-out");
+        setScreen("hub");
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
 
   // Auth listener
   useEffect(() => {
@@ -89,7 +117,6 @@ export default function App() {
     const update = { ...usersDoc, [r]: user.uid, [`${r}Name`]: user.displayName, [`${r}Photo`]: user.photoURL };
     await setDoc(USERS_REF(), update, { merge: true });
     setRole(r);
-    // Init shared data if first user
     const snap = await getDoc(DOC_REF());
     if (!snap.exists()) await setDoc(DOC_REF(), EMPTY);
   };
@@ -105,15 +132,15 @@ export default function App() {
   if (authLoading)
     return (
       <div style={S.loadWrap}>
-        <div style={{ fontSize: 60 }}>🐙</div>
+        <div style={{ fontSize: 60, animation: "pop-in 0.6s ease" }}>🐙</div>
         <p style={{ color: "#6a6a8a" }}>Risvegliando il Covo...</p>
       </div>
     );
 
   if (!user)
     return (
-      <div style={S.authPage}>
-        <div style={{ fontSize: 64 }}>🐙</div>
+      <div style={{ ...S.authPage, animation: "fade-in 0.5s ease" }}>
+        <div style={{ fontSize: 64, animation: "pop-in 0.6s ease" }}>🐙</div>
         <h1 style={S.hubTitle}>Covo di Cthulhu</h1>
         <p style={{ color: "#6a6a8a", margin: "8px 0 28px", fontSize: 14 }}>
           Accedi per entrare nel Covo
@@ -133,7 +160,7 @@ export default function App() {
   /* ── Role Selection ── */
   if (!role)
     return (
-      <div style={S.authPage}>
+      <div style={{ ...S.authPage, animation: "fade-in 0.5s ease" }}>
         <img
           src={user.photoURL}
           alt=""
@@ -145,10 +172,7 @@ export default function App() {
         <p style={{ color: "#6a6a8a", fontSize: 13, margin: "0 0 20px" }}>Chi sei nel Covo?</p>
         <div style={{ display: "flex", gap: 16 }}>
           <button
-            style={{
-              ...S.roleBtn,
-              opacity: usersDoc?.lui && usersDoc.lui !== user.uid ? 0.3 : 1,
-            }}
+            style={{ ...S.roleBtn, opacity: usersDoc?.lui && usersDoc.lui !== user.uid ? 0.3 : 1, animation: "pop-in 0.4s ease 0.1s both" }}
             disabled={usersDoc?.lui && usersDoc.lui !== user.uid}
             onClick={() => pickRole("lui")}
           >
@@ -159,10 +183,7 @@ export default function App() {
             )}
           </button>
           <button
-            style={{
-              ...S.roleBtn,
-              opacity: usersDoc?.lei && usersDoc.lei !== user.uid ? 0.3 : 1,
-            }}
+            style={{ ...S.roleBtn, opacity: usersDoc?.lei && usersDoc.lei !== user.uid ? 0.3 : 1, animation: "pop-in 0.4s ease 0.2s both" }}
             disabled={usersDoc?.lei && usersDoc.lei !== user.uid}
             onClick={() => pickRole("lei")}
           >
@@ -182,24 +203,26 @@ export default function App() {
   if (!loaded)
     return (
       <div style={S.loadWrap}>
-        <div style={{ fontSize: 60 }}>🐙</div>
+        <div style={{ fontSize: 60, animation: "pop-in 0.6s ease" }}>🐙</div>
         <p style={{ color: "#6a6a8a" }}>Caricamento dati...</p>
       </div>
     );
 
   /* ── Main App ── */
   if (screen === "hub")
-    return <Hub onGo={setScreen} data={data} save={save} role={role} user={user} usersDoc={usersDoc} logout={logout} />;
+    return <Hub onGo={navigate} data={data} save={save} role={role} user={user} usersDoc={usersDoc} logout={logout} />;
 
   return (
-    <div style={S.page}>
-      <button style={S.backBtn} onClick={() => setScreen("hub")}>← Covo</button>
-      {screen === "movies" && <MovieList data={data} save={save} />}
-      {screen === "wheel" && <Wheel movies={data.movies} />}
-      {screen === "votes" && <Votes data={data} save={save} role={role} />}
-      {screen === "watched" && <Watched data={data} save={save} />}
-      {screen === "planner" && <Planner data={data} save={save} />}
-      {screen === "reviews" && <Reviews data={data} save={save} role={role} />}
+    <div style={S.page} key={screen}>
+      <div style={{ animation: `${animDir} 0.3s ease` }}>
+        <button style={S.backBtn} onClick={() => { goBack(); window.history.back(); }}>← Covo</button>
+        {screen === "movies" && <MovieList data={data} save={save} />}
+        {screen === "wheel" && <Wheel movies={data.movies} />}
+        {screen === "votes" && <Votes data={data} save={save} role={role} />}
+        {screen === "watched" && <Watched data={data} save={save} />}
+        {screen === "planner" && <Planner data={data} save={save} />}
+        {screen === "reviews" && <Reviews data={data} save={save} role={role} />}
+      </div>
     </div>
   );
 }
@@ -253,7 +276,7 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
   return (
     <div style={S.hub}>
       {/* User bar */}
-      <div style={S.userBar}>
+      <div style={{ ...S.userBar, animation: "fade-in 0.4s ease" }}>
         <img src={user.photoURL} alt="" style={S.avatar} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0f0" }}>
@@ -267,7 +290,7 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
       </div>
 
       {/* Anniversary Banner */}
-      <div style={S.annivBanner}>
+      <div style={{ ...S.annivBanner, animation: "fade-in 0.5s ease 0.1s both" }}>
         {!anniversary || editingDate ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, color: "#c4a0ff" }}>💜 Quando è il vostro anniversario?</span>
@@ -319,8 +342,8 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
       <p style={S.hubSub}>{movies.length} film · {watched.length} visti · {plans.length} serate</p>
 
       <div style={S.grid}>
-        {SECTIONS.map((s) => (
-          <button key={s.id} style={S.card} onClick={() => onGo(s.id)}>
+        {SECTIONS.map((s, i) => (
+          <button key={s.id} style={{ ...S.card, animation: `pop-in 0.35s ease ${0.1 + i * 0.06}s both` }} onClick={() => onGo(s.id)}>
             <span style={S.cardIcon}>{s.icon}</span>
             <span style={S.cardLabel}>{s.label}</span>
           </button>
@@ -354,7 +377,7 @@ function MovieList({ data, save }) {
       </div>
       {data.movies.length === 0 && <p style={S.empty}>La lista è vuota!</p>}
       {data.movies.map((m, i) => (
-        <div key={m} style={S.item}>
+        <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i * 0.04}s both` }}>
           <span style={{ fontSize: 18 }}>{"🎬🍿🎥📽️🎞️"[i % 5]}</span>
           <span style={{ ...S.itemText, color: hash(m) }}>{m}</span>
           <button style={S.xBtn} onClick={() => rm(m)}>✕</button>
@@ -425,7 +448,7 @@ function Wheel({ movies }) {
             {spinning ? "Girando..." : "🐙 Estrai dal Covo!"}
           </button>
           {picked && (
-            <div style={S.pickedCard}>
+            <div style={{ ...S.pickedCard, animation: "pop-in 0.5s ease" }}>
               <div style={S.pickedLbl}>Stasera guardiamo:</div>
               <div style={S.pickedTxt}>{picked}</div>
             </div>
@@ -454,11 +477,11 @@ function Votes({ data, save, role }) {
       <h2 style={S.secTitle}>⭐ Votazione</h2>
       <p style={{ fontSize: 12, color: "#6a6a8a", margin: 0 }}>Stai votando come <strong style={{ color: "#c4a0ff" }}>{role}</strong></p>
       {sorted.length === 0 && <p style={S.empty}>Aggiungi film prima!</p>}
-      {sorted.map((m) => {
+      {sorted.map((m, i) => {
         const v = data.votes[m] || { lui: 0, lei: 0 };
         const t = v.lui + v.lei;
         return (
-          <div key={m} style={S.voteCard}>
+          <div key={m} style={{ ...S.voteCard, animation: `fade-in 0.3s ease ${i * 0.05}s both` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{m}</span>
               <span style={S.badge}>{t} voti</span>
@@ -517,7 +540,7 @@ function Watched({ data, save }) {
       )}
       {data.watched.length === 0 && <p style={S.empty}>Nessun film visto ancora!</p>}
       {data.watched.map((w, i) => (
-        <div key={i} style={S.item}>
+        <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i * 0.04}s both` }}>
           <span>🎬</span>
           <span style={S.itemText}>{w.title}</span>
           <span style={{ fontSize: 11, color: "#6a6a8a" }}>{w.date}</span>
@@ -558,8 +581,8 @@ function Planner({ data, save }) {
         <button style={S.bigBtn} onClick={add}>+ Pianifica Serata</button>
       </div>
       {data.plans.length === 0 && <p style={S.empty}>Nessuna serata pianificata!</p>}
-      {[...data.plans].reverse().map((p) => (
-        <div key={p.id} style={S.planCard}>
+      {[...data.plans].reverse().map((p, i) => (
+        <div key={p.id} style={{ ...S.planCard, animation: `fade-in 0.3s ease ${i * 0.05}s both` }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontWeight: 700, color: "#c4a0ff" }}>📅 {p.date}{p.time ? ` · 🕐 ${p.time}` : ""}</span>
             <button style={S.xBtn} onClick={() => rm(p.id)}>✕</button>
@@ -624,8 +647,8 @@ function Reviews({ data, save, role }) {
         <button style={S.bigBtn} onClick={addReview}>📝 Salva Recensione</button>
       </div>
       {reviewed.length === 0 && <p style={S.empty}>Nessuna recensione!</p>}
-      {reviewed.map(([title, r]) => (
-        <div key={title} style={S.reviewCard}>
+      {reviewed.map(([title, r], i) => (
+        <div key={title} style={{ ...S.reviewCard, animation: `fade-in 0.3s ease ${i * 0.05}s both` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14 }}>{title}</span>
             <span style={{ ...S.scoreBadge, fontSize: 16, background: r.avg >= 7 ? "rgba(76,175,80,.25)" : r.avg >= 5 ? "rgba(255,193,7,.25)" : "rgba(233,69,96,.25)", color: r.avg >= 7 ? "#81c784" : r.avg >= 5 ? "#ffd54f" : "#e94560" }}>
@@ -670,7 +693,7 @@ const S = {
   hubTitle: { margin: "0 0 4px", fontSize: 30, fontWeight: 900, background: "linear-gradient(135deg, #9b59b6, #4eff8a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: -0.5 },
   hubSub: { margin: "0 0 28px", fontSize: 13, color: "#6a6a8a" },
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", maxWidth: 360 },
-  card: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "22px 12px", border: "1px solid rgba(155,89,182,0.15)", borderRadius: 16, background: "rgba(255,255,255,0.03)", color: "#e0e0f0", fontSize: 14, fontWeight: 700, cursor: "pointer" },
+  card: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "22px 12px", border: "1px solid rgba(155,89,182,0.15)", borderRadius: 16, background: "rgba(255,255,255,0.03)", color: "#e0e0f0", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" },
   cardIcon: { fontSize: 30 },
   cardLabel: { fontSize: 13 },
   footer: { marginTop: 32, fontSize: 10, color: "#3a3a5a", textAlign: "center", fontStyle: "italic" },
