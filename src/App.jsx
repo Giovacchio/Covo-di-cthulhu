@@ -47,11 +47,13 @@ const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", 
 
 const PJ_EMOJIS = ["👘", "🧸", "🐻", "🦊", "🐙", "🌙", "⭐", "🔮", "🧶", "🎀", "🐱", "🐰"];
 
-const EMPTY = { movies: [], votes: {}, watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [], gusti: [], pigiami: [] };
+const EMPTY = { movies: [], watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [], gusti: [], pigiami: [] };
 
 function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return `hsl(${Math.abs(h) % 360}, 50%, 38%)`; }
 function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
 function getGreeting() { const h = new Date().getHours(); if (h < 6) return "Buonanotte"; if (h < 13) return "Buongiorno"; if (h < 18) return "Buon pomeriggio"; return "Buonasera"; }
+function toDate(s) { if (!s) return null; const p = s.split(/[-/.]/); if (p[0].length === 4) return new Date(+p[0], +p[1]-1, +p[2]); return new Date(+p[2], +p[1]-1, +p[0]); }
+function daysUntil(dateStr) { const t = toDate(dateStr); if (!t || isNaN(t)) return null; const now = new Date(); now.setHours(0,0,0,0); return Math.ceil((t - now) / 86400000); }
 
 function useCountUp(target, duration = 1200) {
   const [val, setVal] = useState(0);
@@ -108,9 +110,7 @@ function TentacleSep() {
 
 function Sparkline({ values, color = "#f0a500", width = 60, height = 20 }) {
   if (!values || values.length < 2) return null;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = max - min || 1;
+  const max = Math.max(...values, 1); const min = Math.min(...values, 0); const range = max - min || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1)) * width},${height - ((v - min) / range) * (height - 4) - 2}`).join(" ");
   return <svg width={width} height={height} style={{ marginLeft: 8, flexShrink: 0 }}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
@@ -161,8 +161,6 @@ export default function App() {
           if (nd.movies.length > p.movies.length) { const a = nd.movies.find(m => !p.movies.includes(m)); if (a) showT(`${o} ha aggiunto "${a}" 🎬`); }
           if (nd.watched.length > p.watched.length) { const a = nd.watched.find(w => !p.watched.some(pw => pw.title === w.title)); if (a) showT(`${o} ha segnato "${a.title}" come visto ✅`); }
           if ((nd.wishlist||[]).length > (p.wishlist||[]).length) { const a = nd.wishlist.find(w => !(p.wishlist||[]).some(pw => pw.id === w.id)); if (a) showT(`${o} ha aggiunto "${a.title}" alla wishlist 💫`); }
-          const oth = role === "lui" ? "lei" : "lui";
-          Object.keys(nd.votes).forEach(m => { if ((nd.votes[m]?.[oth]||0) > (p.votes?.[m]?.[oth]||0)) showT(`${o} ha votato "${m}" ⭐`); });
         }
         prevRef.current = nd;
         setData(nd);
@@ -226,6 +224,7 @@ export default function App() {
 
 function Toast({ msg }) { if (!msg) return null; return <div style={S.toast}>{msg}</div>; }
 
+/* ═══ HUB ═══ */
 function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
   const { movies, watched, plans, anniversary } = data;
   const [glow, setGlow] = useState(false);
@@ -256,6 +255,10 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
   }
   const oR = role === "lui" ? "lei" : "lui";
   const oN = usersDoc?.[`${oR}Name`];
+
+  // Next upcoming plan
+  const nextPlan = plans.filter(p => { const d = daysUntil(p.date); return d !== null && d >= 0; }).sort((a,b) => (daysUntil(a.date)||0) - (daysUntil(b.date)||0))[0];
+  const nextDays = nextPlan ? daysUntil(nextPlan.date) : null;
 
   const cardSubs = {
     movies: `${movies.length} film`, wheel: movies.length < 2 ? "min. 2 film" : "Pronto!",
@@ -303,6 +306,18 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
         )}
       </div>
 
+      {/* Next plan banner */}
+      {nextPlan && (
+        <div style={{ ...S.nextPlanBanner, animation: "fade-in 0.5s ease 0.15s both" }} onClick={() => onGo("planner")}>
+          <div style={{ fontSize: 11, color: "#00b894", fontWeight: 700 }}>🕯️ Prossima serata {nextDays === 0 ? "— STASERA!" : nextDays === 1 ? "— domani!" : `tra ${nextDays} giorni`}</div>
+          <div style={{ fontSize: 13, color: "#eae2d6", fontWeight: 600 }}>
+            📅 {nextPlan.date}{nextPlan.time ? ` · 🕐 ${nextPlan.time}` : ""}
+            {nextPlan.movie && ` · 🎬 ${nextPlan.movie}`}
+            {nextPlan.activity && ` · 🎭 ${nextPlan.activity}`}
+          </div>
+        </div>
+      )}
+
       <TentacleSep />
 
       <div style={{ ...S.eyeWrap, opacity: glow ? 1 : 0, transform: glow ? "scale(1)" : "scale(0.7)" }}>
@@ -327,9 +342,7 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
       {slotAnim && (
         <div style={{ ...S.suggCard, textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "center", gap: 12, fontSize: 28 }}>
-            {["🎭", "🍕", "🍷"].map((e, i) => (
-              <span key={i} style={{ animation: `slot-spin 0.4s ease ${i * 0.15}s infinite` }}>{e}</span>
-            ))}
+            {["🎭", "🍕", "🍷"].map((e, i) => <span key={i} style={{ animation: `slot-spin 0.4s ease ${i * 0.15}s infinite` }}>{e}</span>)}
           </div>
         </div>
       )}
@@ -358,10 +371,11 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout }) {
   );
 }
 
+/* ═══ MOVIE LIST ═══ */
 function MovieList({ data, save }) {
   const [inp, setInp] = useState(""); const [cat, setCat] = useState("altro"); const [search, setSearch] = useState("");
-  const add = () => { const t = inp.trim(); if (!t || data.movies.includes(t)) return; save({ ...data, movies: [...data.movies, t], votes: { ...data.votes, [t]: { lui: 0, lei: 0 } }, categories: { ...(data.categories||{}), [t]: cat } }); setInp(""); };
-  const rm = (m) => { const v = { ...data.votes }; delete v[m]; const c = { ...(data.categories||{}) }; delete c[m]; const r = { ...(data.reactions||{}) }; delete r[m]; save({ ...data, movies: data.movies.filter(x => x !== m), votes: v, categories: c, reactions: r }); };
+  const add = () => { const t = inp.trim(); if (!t || data.movies.includes(t)) return; save({ ...data, movies: [...data.movies, t], categories: { ...(data.categories||{}), [t]: cat } }); setInp(""); };
+  const rm = (m) => { const c = { ...(data.categories||{}) }; delete c[m]; const r = { ...(data.reactions||{}) }; delete r[m]; save({ ...data, movies: data.movies.filter(x => x !== m), categories: c, reactions: r }); };
   const filtered = data.movies.filter(m => m.toLowerCase().includes(search.toLowerCase()));
   const gc = (m) => CATEGORIES.find(c => c.id === ((data.categories||{})[m] || "altro")) || CATEGORIES[9];
   const grouped = {}; filtered.forEach(m => { const c = gc(m); if (!grouped[c.id]) grouped[c.id] = { cat: c, items: [] }; grouped[c.id].items.push(m); });
@@ -387,6 +401,7 @@ function MovieList({ data, save }) {
   );
 }
 
+/* ═══ WHEEL ═══ */
 function Wheel({ movies }) {
   const [rot, setRot] = useState(0); const [spinning, setSpinning] = useState(false); const [picked, setPicked] = useState(null);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -414,22 +429,92 @@ function Wheel({ movies }) {
   );
 }
 
+/* ═══ WATCHED — with inline reviews & month filter ═══ */
 function Watched({ data, save }) {
+  const [filter, setFilter] = useState("all");
   const mw = (m) => { save({ ...data, movies: data.movies.filter(x => x !== m), watched: [...data.watched, { title: m, date: new Date().toLocaleDateString("it-IT") }] }); };
   const uw = (t) => { save({ ...data, watched: data.watched.filter(w => w.title !== t), movies: [...data.movies, t] }); };
+
+  // Build month options from watched dates
+  const months = {};
+  data.watched.forEach(w => {
+    if (!w.date) return;
+    const parts = w.date.split("/");
+    if (parts.length >= 2) { const key = `${parts[1]}/${parts[2] || parts[1]}`; const label = `${["", "Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"][+parts[1]] || parts[1]} ${parts[2] || ""}`; months[key] = label; }
+  });
+  const monthKeys = Object.keys(months);
+  const filtered = filter === "all" ? data.watched : data.watched.filter(w => {
+    if (!w.date) return false;
+    const p = w.date.split("/");
+    return `${p[1]}/${p[2] || p[1]}` === filter;
+  });
+
   return (
     <div style={S.sec}><h2 style={S.secTitle}>✅ Già Visti</h2>
       {data.movies.length > 0 && <><p style={{ fontSize: 12, color: "#7c8a6d", margin: 0 }}>Segna come visto:</p><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{data.movies.map(m => <button key={m} style={S.chip} onClick={() => mw(m)}>{m} ✓</button>)}</div></>}
-      {data.watched.length === 0 && <p style={S.empty}>Nessun film visto ancora!</p>}
-      {data.watched.map((w, i) => <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both` }}><span>🎬</span><span style={S.itemText}>{w.title}</span><span style={{ fontSize: 11, color: "#7c8a6d" }}>{w.date}</span><button style={S.xBtn} onClick={() => uw(w.title)}>↩</button></div>)}
+      {/* Month filter */}
+      {monthKeys.length > 1 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <button onClick={() => setFilter("all")} style={{ ...S.catChip, background: filter === "all" ? "rgba(0,184,148,0.2)" : "transparent", borderColor: filter === "all" ? "#00b894" : "rgba(255,255,255,0.06)" }}>Tutti ({data.watched.length})</button>
+          {monthKeys.map(k => <button key={k} onClick={() => setFilter(k)} style={{ ...S.catChip, background: filter === k ? "rgba(0,184,148,0.2)" : "transparent", borderColor: filter === k ? "#00b894" : "rgba(255,255,255,0.06)" }}>{months[k]}</button>)}
+        </div>
+      )}
+      {filtered.length === 0 && <p style={S.empty}>Nessun film visto{filter !== "all" ? " in questo periodo" : " ancora"}!</p>}
+      {filtered.map((w, i) => {
+        const rev = (data.reviews || {})[w.title];
+        return (
+          <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, flexDirection: "column", alignItems: "stretch", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span>🎬</span><span style={S.itemText}>{w.title}</span>
+              <span style={{ fontSize: 11, color: "#7c8a6d" }}>{w.date}</span>
+              <button style={S.xBtn} onClick={() => uw(w.title)}>↩</button>
+            </div>
+            {rev && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", paddingLeft: 26, fontSize: 11, color: "#7c8a6d" }}>
+                {rev.avg !== undefined && <span style={{ ...S.scoreBadge, fontSize: 11, padding: "1px 6px" }}>{rev.avg}/10</span>}
+                {rev.lui !== undefined && <span>🙋‍♂️ {rev.lui}</span>}
+                {rev.lei !== undefined && <span>🙋‍♀️ {rev.lei}</span>}
+                {rev.luiComment && <span style={{ fontStyle: "italic", color: "#5a6a4e" }}>"{rev.luiComment.slice(0, 30)}{rev.luiComment.length > 30 ? "…" : ""}"</span>}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+/* ═══ PLANNER — future/past split with countdown ═══ */
 function Planner({ data, save }) {
   const [f, sF] = useState({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"" });
   const add = () => { if (!f.date) return; save({ ...data, plans: [...data.plans, { ...f, id: Date.now() }] }); sF({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"" }); };
   const rm = (id) => save({ ...data, plans: data.plans.filter(p => p.id !== id) });
+
+  const future = data.plans.filter(p => { const d = daysUntil(p.date); return d !== null && d >= 0; }).sort((a,b) => (daysUntil(a.date)||0) - (daysUntil(b.date)||0));
+  const past = data.plans.filter(p => { const d = daysUntil(p.date); return d !== null && d < 0; }).sort((a,b) => (daysUntil(b.date)||0) - (daysUntil(a.date)||0));
+  // Plans with unparseable dates go to past
+  const unknown = data.plans.filter(p => daysUntil(p.date) === null);
+
+  const renderPlan = (p, i, showCountdown) => {
+    const d = daysUntil(p.date);
+    return (
+      <div key={p.id} style={{ ...S.planCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, color: "#f0a500" }}>📅 {p.date}{p.time?` · 🕐 ${p.time}`:""}</span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {showCountdown && d !== null && d >= 0 && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, background: d === 0 ? "rgba(0,184,148,0.25)" : "rgba(240,165,0,0.15)", color: d === 0 ? "#00b894" : "#f0a500" }}>
+                {d === 0 ? "OGGI!" : d === 1 ? "Domani" : `tra ${d}g`}
+              </span>
+            )}
+            <button style={S.xBtn} onClick={() => rm(p.id)}>✕</button>
+          </div>
+        </div>
+        {p.movie&&<div>🎬 {p.movie}</div>}{p.activity&&<div>🎭 {p.activity}</div>}{p.place&&<div>📍 {p.place}</div>}{p.food&&<div>🍕 {p.food}</div>}{p.drink&&<div>🍷 {p.drink}</div>}{p.note&&<div style={{ fontSize: 12, color: "#7c8a6d", fontStyle: "italic" }}>"{p.note}"</div>}
+      </div>
+    );
+  };
+
   return (
     <div style={S.sec}><h2 style={S.secTitle}>🕯️ Date Night Planner</h2>
       <div style={S.formGroup}>
@@ -442,19 +527,49 @@ function Planner({ data, save }) {
         <input style={S.input} placeholder="📝 Note..." value={f.note} onChange={e => sF({...f, note:e.target.value})} />
         <button style={S.bigBtn} onClick={add}>+ Pianifica Serata</button>
       </div>
+      {future.length > 0 && <h3 style={{ fontSize: 14, color: "#00b894", margin: "8px 0 4px" }}>🔜 Prossime serate</h3>}
+      {future.map((p, i) => renderPlan(p, i, true))}
+      {(past.length > 0 || unknown.length > 0) && <h3 style={{ fontSize: 14, color: "#7c8a6d", margin: "8px 0 4px" }}>📖 Serate passate</h3>}
+      {[...past, ...unknown].map((p, i) => renderPlan(p, i, false))}
       {data.plans.length === 0 && <p style={S.empty}>Nessuna serata pianificata!</p>}
-      {[...data.plans].reverse().map((p, i) => <div key={p.id} style={{ ...S.planCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}><div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 700, color: "#f0a500" }}>📅 {p.date}{p.time?` · 🕐 ${p.time}`:""}</span><button style={S.xBtn} onClick={() => rm(p.id)}>✕</button></div>{p.movie&&<div>🎬 {p.movie}</div>}{p.activity&&<div>🎭 {p.activity}</div>}{p.place&&<div>📍 {p.place}</div>}{p.food&&<div>🍕 {p.food}</div>}{p.drink&&<div>🍷 {p.drink}</div>}{p.note&&<div style={{ fontSize: 12, color: "#7c8a6d", fontStyle: "italic" }}>"{p.note}"</div>}</div>)}
     </div>
   );
 }
 
+/* ═══ REVIEWS — with Unanimi & best film badges ═══ */
 function Reviews({ data, save, role }) {
   const [sel, setSel] = useState(""); const [score, setScore] = useState(7); const [comment, setComment] = useState("");
   const all = [...new Set([...data.movies, ...data.watched.map(w => w.title)])];
   const add = () => { if (!sel) return; const ex = data.reviews[sel]||{}; save({ ...data, reviews: { ...data.reviews, [sel]: { ...ex, [role]: score, [`${role}Comment`]: comment, avg: +((score + (ex[role==="lui"?"lei":"lui"]||score))/2).toFixed(1), date: new Date().toLocaleDateString("it-IT") } } }); setSel(""); setComment(""); };
   const rev = Object.entries(data.reviews||{}).sort((a,b) => (b[1].avg||0)-(a[1].avg||0));
+
+  // Best film
+  const best = rev.length > 0 ? rev[0] : null;
+  // Unanimi (both reviewed, diff ≤ 1)
+  const unanimi = rev.filter(([, r]) => r.lui !== undefined && r.lei !== undefined && Math.abs(r.lui - r.lei) <= 1);
+
   return (
     <div style={S.sec}><h2 style={S.secTitle}>📝 Recensioni</h2>
+
+      {/* Highlights */}
+      {(best || unanimi.length > 0) && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {best && best[1].avg >= 1 && (
+            <div style={{ flex: 1, minWidth: 140, padding: "10px 12px", background: "rgba(240,165,0,0.08)", border: "1px solid rgba(240,165,0,0.15)", borderRadius: 12, animation: "fade-in 0.4s ease" }}>
+              <div style={{ fontSize: 10, color: "#7c8a6d" }}>👑 Miglior Film</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#f0a500" }}>{best[0]}</div>
+              <div style={{ fontSize: 12, color: "#eae2d6" }}>{best[1].avg}/10</div>
+            </div>
+          )}
+          {unanimi.length > 0 && (
+            <div style={{ flex: 1, minWidth: 140, padding: "10px 12px", background: "rgba(0,184,148,0.08)", border: "1px solid rgba(0,184,148,0.15)", borderRadius: 12, animation: "fade-in 0.4s ease 0.1s both" }}>
+              <div style={{ fontSize: 10, color: "#7c8a6d" }}>🤝 Unanimi ({unanimi.length})</div>
+              <div style={{ fontSize: 12, color: "#eae2d6" }}>{unanimi.slice(0, 3).map(([t]) => t).join(", ")}{unanimi.length > 3 ? "…" : ""}</div>
+            </div>
+          )}
+        </div>
+      )}
+
       <p style={{ fontSize: 12, color: "#7c8a6d", margin: 0 }}>Recensisci come <strong style={{ color: "#f0a500" }}>{role}</strong></p>
       <div style={S.formGroup}>
         <select style={S.input} value={sel} onChange={e => setSel(e.target.value)}><option value="">— Scegli film —</option>{all.map(m => <option key={m}>{m}</option>)}</select>
@@ -463,39 +578,52 @@ function Reviews({ data, save, role }) {
         <button style={S.bigBtn} onClick={add}>📝 Salva Recensione</button>
       </div>
       {rev.length === 0 && <p style={S.empty}>Nessuna recensione!</p>}
-      {rev.map(([t, r], i) => (
-        <div key={t} style={{ ...S.reviewCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>{t}</span>
-            <span style={{ ...S.scoreBadge, fontSize: 16, background: r.avg>=7?"rgba(76,175,80,.25)":r.avg>=5?"rgba(255,193,7,.25)":"rgba(233,69,96,.25)", color: r.avg>=7?"#81c784":r.avg>=5?"#ffd54f":"#e94560" }}>{r.avg}/10</span>
-          </div>
-          <div style={{ fontSize: 12, display: "flex", gap: 12 }}>{r.lui!==undefined&&<span>🙋‍♂️ {r.lui}/10</span>}{r.lei!==undefined&&<span>🙋‍♀️ {r.lei}/10</span>}<span style={{ color: "#7c8a6d" }}>{r.date}</span></div>
-          {r.lui !== undefined && r.lei !== undefined && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-              <span style={{ fontSize: 10, color: "#4fc3f7" }}>🙋‍♂️</span>
-              <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: "rgba(255,255,255,0.04)", display: "flex" }}>
-                <div style={{ width: `${(r.lui/10)*100}%`, background: "linear-gradient(90deg, #4fc3f7, #4fc3f788)", borderRadius: 3 }} />
+      {rev.map(([t, r], i) => {
+        const isUnanimi = r.lui !== undefined && r.lei !== undefined && Math.abs(r.lui - r.lei) <= 1;
+        return (
+          <div key={t} style={{ ...S.reviewCard, animation: `fade-in 0.3s ease ${i*0.05}s both` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{t}</span>
+                {isUnanimi && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 6, background: "rgba(0,184,148,0.2)", color: "#00b894", fontWeight: 700 }}>🤝 Unanimi!</span>}
               </div>
-              <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: "rgba(255,255,255,0.04)", display: "flex", justifyContent: "flex-end" }}>
-                <div style={{ width: `${(r.lei/10)*100}%`, background: "linear-gradient(270deg, #ec4899, #ec489988)", borderRadius: 3 }} />
-              </div>
-              <span style={{ fontSize: 10, color: "#ec4899" }}>🙋‍♀️</span>
+              <span style={{ ...S.scoreBadge, fontSize: 16, background: r.avg>=7?"rgba(76,175,80,.25)":r.avg>=5?"rgba(255,193,7,.25)":"rgba(233,69,96,.25)", color: r.avg>=7?"#81c784":r.avg>=5?"#ffd54f":"#e94560" }}>{r.avg}/10</span>
             </div>
-          )}
-          {r.luiComment&&<div style={{ fontSize: 12, color: "#aaa" }}>🙋‍♂️ "{r.luiComment}"</div>}
-          {r.leiComment&&<div style={{ fontSize: 12, color: "#aaa" }}>🙋‍♀️ "{r.leiComment}"</div>}
-        </div>
-      ))}
+            <div style={{ fontSize: 12, display: "flex", gap: 12 }}>{r.lui!==undefined&&<span>🙋‍♂️ {r.lui}/10</span>}{r.lei!==undefined&&<span>🙋‍♀️ {r.lei}/10</span>}<span style={{ color: "#7c8a6d" }}>{r.date}</span></div>
+            {r.lui !== undefined && r.lei !== undefined && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <span style={{ fontSize: 10, color: "#4fc3f7" }}>🙋‍♂️</span>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: "rgba(255,255,255,0.04)", display: "flex" }}>
+                  <div style={{ width: `${(r.lui/10)*100}%`, background: "linear-gradient(90deg, #4fc3f7, #4fc3f788)", borderRadius: 3 }} />
+                </div>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: "rgba(255,255,255,0.04)", display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ width: `${(r.lei/10)*100}%`, background: "linear-gradient(270deg, #ec4899, #ec489988)", borderRadius: 3 }} />
+                </div>
+                <span style={{ fontSize: 10, color: "#ec4899" }}>🙋‍♀️</span>
+              </div>
+            )}
+            {r.luiComment&&<div style={{ fontSize: 12, color: "#aaa" }}>🙋‍♂️ "{r.luiComment}"</div>}
+            {r.leiComment&&<div style={{ fontSize: 12, color: "#aaa" }}>🙋‍♀️ "{r.leiComment}"</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+/* ═══ WISHLIST — with priority hearts ═══ */
 function Wishlist({ data, save, role }) {
   const [inp, setInp] = useState(""); const [type, setType] = useState("serie"); const [note, setNote] = useState("");
-  const add = () => { const t = inp.trim(); if (!t) return; save({ ...data, wishlist: [...(data.wishlist||[]), { id: Date.now(), title: t, type, note, addedBy: role, date: new Date().toLocaleDateString("it-IT"), done: false }] }); setInp(""); setNote(""); };
+  const add = () => { const t = inp.trim(); if (!t) return; save({ ...data, wishlist: [...(data.wishlist||[]), { id: Date.now(), title: t, type, note, addedBy: role, date: new Date().toLocaleDateString("it-IT"), done: false, priority: false }] }); setInp(""); setNote(""); };
   const toggle = (id) => save({ ...data, wishlist: data.wishlist.map(w => w.id===id ? { ...w, done: !w.done } : w) });
+  const togglePriority = (id) => save({ ...data, wishlist: data.wishlist.map(w => w.id===id ? { ...w, priority: !w.priority } : w) });
   const rm = (id) => save({ ...data, wishlist: data.wishlist.filter(w => w.id !== id) });
-  const grouped = {}; (data.wishlist||[]).forEach(w => { if (!grouped[w.type]) grouped[w.type] = []; grouped[w.type].push(w); });
+  // Sort: priority first, then not done, then done
+  const sorted = [...(data.wishlist||[])].sort((a,b) => {
+    if (a.priority && !b.priority) return -1; if (!a.priority && b.priority) return 1;
+    if (!a.done && b.done) return -1; if (a.done && !b.done) return 1; return 0;
+  });
+  const grouped = {}; sorted.forEach(w => { if (!grouped[w.type]) grouped[w.type] = []; grouped[w.type].push(w); });
   const total = (data.wishlist||[]).length; const done = (data.wishlist||[]).filter(w=>w.done).length; const pct = total>0?Math.round((done/total)*100):0;
   return (
     <div style={S.sec}><h2 style={S.secTitle}>💫 Wishlist Condivisa</h2>
@@ -514,7 +642,16 @@ function Wishlist({ data, save, role }) {
         <button style={S.bigBtn} onClick={add}>+ Aggiungi alla Wishlist</button>
       </div>
       {Object.keys(grouped).length === 0 && <p style={S.empty}>La wishlist è vuota!</p>}
-      {WISH_TYPES.map(wt => { const items = grouped[wt.id]; if (!items) return null; return <div key={wt.id}><h3 style={{ fontSize: 14, color: "#7c8a6d", margin: "8px 0 6px" }}>{wt.icon} {wt.label}</h3>{items.map((w, i) => <div key={w.id} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, opacity: w.done?0.5:1 }}><button style={{ ...S.emojiBtn, fontSize: 18 }} onClick={() => toggle(w.id)}>{w.done?"✅":"⬜"}</button><div style={{ flex: 1 }}><div style={{ ...S.itemText, textDecoration: w.done?"line-through":"none" }}>{w.title}</div>{w.note&&<div style={{ fontSize: 11, color: "#7c8a6d" }}>{w.note}</div>}<div style={{ fontSize: 10, color: "#4a6a3e" }}>aggiunto da {w.addedBy==="lui"?"🙋‍♂️":"🙋‍♀️"} · {w.date}</div></div><button style={S.xBtn} onClick={() => rm(w.id)}>✕</button></div>)}</div>; })}
+      {WISH_TYPES.map(wt => { const items = grouped[wt.id]; if (!items) return null; return <div key={wt.id}><h3 style={{ fontSize: 14, color: "#7c8a6d", margin: "8px 0 6px" }}>{wt.icon} {wt.label}</h3>{items.map((w, i) => <div key={w.id} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, opacity: w.done?0.5:1, borderLeft: w.priority ? "3px solid #ec4899" : "3px solid transparent" }}>
+        <button style={{ ...S.emojiBtn, fontSize: 18 }} onClick={() => toggle(w.id)}>{w.done?"✅":"⬜"}</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ ...S.itemText, textDecoration: w.done?"line-through":"none" }}>{w.title}{w.priority && " ❤️"}</div>
+          {w.note&&<div style={{ fontSize: 11, color: "#7c8a6d" }}>{w.note}</div>}
+          <div style={{ fontSize: 10, color: "#4a6a3e" }}>aggiunto da {w.addedBy==="lui"?"🙋‍♂️":"🙋‍♀️"} · {w.date}</div>
+        </div>
+        <button onClick={() => togglePriority(w.id)} style={{ ...S.emojiBtn, fontSize: 14, background: w.priority ? "rgba(236,72,153,0.15)" : "transparent" }}>{w.priority ? "❤️" : "🤍"}</button>
+        <button style={S.xBtn} onClick={() => rm(w.id)}>✕</button>
+      </div>)}</div>; })}
     </div>
   );
 }
@@ -569,6 +706,7 @@ function Gusti({ data, save, role }) {
   );
 }
 
+/* ═══ PIGIAMI ═══ */
 function Pigiami({ data, save, role }) {
   const [name, setName] = useState(""); const [owner, setOwner] = useState(role); const [emoji, setEmoji] = useState("👘");
   const [comodita, setComodita] = useState(5); const [adattabilita, setAdattabilita] = useState(5); const [cute, setCute] = useState(5);
@@ -622,29 +760,73 @@ function Pigiami({ data, save, role }) {
   );
 }
 
+/* ═══ STATS — enriched ═══ */
 function Stats({ data }) {
-  const tw = data.watched.length; const rv = Object.values(data.reviews||{});
+  const tw = data.watched.length; const rv = Object.values(data.reviews||{}); const re = Object.entries(data.reviews||{});
   const avgL = rv.filter(r=>r.lui!==undefined).length>0 ? (rv.reduce((s,r)=>s+(r.lui||0),0)/rv.filter(r=>r.lui!==undefined).length).toFixed(1) : "-";
   const avgE = rv.filter(r=>r.lei!==undefined).length>0 ? (rv.reduce((s,r)=>s+(r.lei||0),0)/rv.filter(r=>r.lei!==undefined).length).toFixed(1) : "-";
   const avgT = rv.length>0 ? (rv.reduce((s,r)=>s+(r.avg||0),0)/rv.length).toFixed(1) : "-";
-  let mv="-", mx=0; Object.entries(data.votes||{}).forEach(([m,v])=>{ const t=(v.lui||0)+(v.lei||0); if(t>mx){mx=t;mv=m;} });
-  let bm="-", bs=0; Object.entries(data.reviews||{}).forEach(([m,r])=>{ if((r.avg||0)>bs){bs=r.avg;bm=m;} });
-  let wm="-", ws=11; Object.entries(data.reviews||{}).forEach(([m,r])=>{ if(r.avg!==undefined&&r.avg<ws){ws=r.avg;wm=m;} });
+  let bm="-", bs=0; re.forEach(([m,r])=>{ if((r.avg||0)>bs){bs=r.avg;bm=m;} });
+  let wm="-", ws=11; re.forEach(([m,r])=>{ if(r.avg!==undefined&&r.avg<ws){ws=r.avg;wm=m;} });
   const cc={}; data.movies.forEach(m=>{ const c=(data.categories||{})[m]||"altro"; cc[c]=(cc[c]||0)+1; }); const tc=Object.entries(cc).sort((a,b)=>b[1]-a[1])[0]; const tci=tc?CATEGORIES.find(c=>c.id===tc[0]):null;
   const rc={}; Object.values(data.reactions||{}).forEach(r=>Object.values(r).forEach(e=>{rc[e]=(rc[e]||0)+1;})); const tr=Object.entries(rc).sort((a,b)=>b[1]-a[1])[0];
-  const revEntries = Object.entries(data.reviews||{});
-  const avgSpark = revEntries.length>=2 ? revEntries.map(([,r])=>r.avg||0) : null;
-  const luiSpark = revEntries.filter(([,r])=>r.lui!==undefined).length>=2 ? revEntries.filter(([,r])=>r.lui!==undefined).map(([,r])=>r.lui) : null;
-  const leiSpark = revEntries.filter(([,r])=>r.lei!==undefined).length>=2 ? revEntries.filter(([,r])=>r.lei!==undefined).map(([,r])=>r.lei) : null;
+
+  // Sparklines
+  const avgSpark = re.length>=2 ? re.map(([,r])=>r.avg||0) : null;
+  const luiSpark = re.filter(([,r])=>r.lui!==undefined).length>=2 ? re.filter(([,r])=>r.lui!==undefined).map(([,r])=>r.lui) : null;
+  const leiSpark = re.filter(([,r])=>r.lei!==undefined).length>=2 ? re.filter(([,r])=>r.lei!==undefined).map(([,r])=>r.lei) : null;
+
+  // Streak: consecutive watched films
+  const streak = tw;
+
+  // Most active month
+  const monthCount = {};
+  data.watched.forEach(w => {
+    if (!w.date) return;
+    const p = w.date.split("/");
+    if (p.length >= 2) { const k = `${["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"][+p[1]]||p[1]} ${p[2]||""}`; monthCount[k] = (monthCount[k]||0)+1; }
+  });
+  const topMonth = Object.entries(monthCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // Genre most/least agreed on
+  const genreAgreement = {};
+  re.forEach(([m, r]) => {
+    if (r.lui === undefined || r.lei === undefined) return;
+    const cat = (data.categories||{})[m] || "altro";
+    if (!genreAgreement[cat]) genreAgreement[cat] = [];
+    genreAgreement[cat].push(Math.abs(r.lui - r.lei));
+  });
+  let bestGenre = "-", worstGenre = "-";
+  const genreAvgs = Object.entries(genreAgreement).map(([g, diffs]) => ({ g, avg: diffs.reduce((s,d)=>s+d,0)/diffs.length }));
+  if (genreAvgs.length > 0) {
+    genreAvgs.sort((a,b) => a.avg - b.avg);
+    const bg = CATEGORIES.find(c => c.id === genreAvgs[0].g);
+    bestGenre = bg ? `${bg.icon} ${bg.label}` : "-";
+    if (genreAvgs.length > 1) {
+      const wg = CATEGORIES.find(c => c.id === genreAvgs[genreAvgs.length-1].g);
+      worstGenre = wg ? `${wg.icon} ${wg.label}` : "-";
+    }
+  }
+
+  // Unanimi count
+  const unanimiCount = rv.filter(r => r.lui !== undefined && r.lei !== undefined && Math.abs(r.lui - r.lei) <= 1).length;
+
   const stats=[
-    {l:"Film in lista",v:data.movies.length,i:"📋"},{l:"Film visti insieme",v:tw,i:"✅"},{l:"Serate pianificate",v:data.plans.length,i:"🕯️"},
-    {l:"Wishlist",v:`${(data.wishlist||[]).filter(w=>w.done).length}/${(data.wishlist||[]).length}`,i:"💫"},{l:"Recensioni",v:rv.length,i:"📝"},
+    {l:"Film in lista",v:data.movies.length,i:"📋"},
+    {l:"Film visti insieme",v:tw,i:"✅"},
+    {l:"Serate pianificate",v:data.plans.length,i:"🕯️"},
+    {l:"Wishlist",v:`${(data.wishlist||[]).filter(w=>w.done).length}/${(data.wishlist||[]).length}`,i:"💫"},
+    {l:"Recensioni",v:rv.length,i:"📝"},
     {l:"Media voto Lui",v:avgL,i:"🙋‍♂️",spark:luiSpark,sparkColor:"#4fc3f7"},
     {l:"Media voto Lei",v:avgE,i:"🙋‍♀️",spark:leiSpark,sparkColor:"#ec4899"},
     {l:"Media di coppia",v:avgT,i:"💜",spark:avgSpark,sparkColor:"#f0a500"},
-    {l:"Più votato",v:mv,i:"🏆"},{l:"Miglior film",v:bm!=="-"?`${bm} (${bs})`:"-",i:"👑"},
+    {l:"Miglior film",v:bm!=="-"?`${bm} (${bs})`:"-",i:"👑"},
     {l:"Peggior film",v:wm!=="-"&&ws<11?`${wm} (${ws})`:"-",i:"💩"},
+    {l:"Recensioni unanimi",v:unanimiCount > 0 ? `${unanimiCount} 🤝` : "-",i:"🤝"},
     {l:"Genere preferito",v:tci?`${tci.icon} ${tci.label} (${tc[1]})`:"-",i:"🎭"},
+    {l:"Più d'accordo su",v:bestGenre,i:"💚"},
+    ...(worstGenre !== "-" ? [{l:"Meno d'accordo su",v:worstGenre,i:"🔥"}] : []),
+    {l:"Mese più attivo",v:topMonth?`${topMonth[0]} (${topMonth[1]} film)`:"-",i:"📅"},
     {l:"Reazione top",v:tr?`${tr[0]} (${tr[1]}x)`:"-",i:"😍"},
   ];
   return (
@@ -676,6 +858,7 @@ const S = {
   annivNum:{fontSize:28,fontWeight:900,color:"#f0a500",lineHeight:1},
   annivLbl:{fontSize:10,color:"#7c8a6d",textAlign:"center"},
   annivDiv:{width:1,height:36,background:"rgba(255,255,255,0.08)"},
+  nextPlanBanner:{width:"100%",maxWidth:360,padding:"10px 14px",background:"rgba(0,184,148,0.06)",border:"1px solid rgba(0,184,148,0.15)",borderRadius:14,marginBottom:8,cursor:"pointer"},
   eyeWrap:{position:"relative",width:140,height:140,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 1s ease",marginBottom:8,marginTop:4},
   eye:{width:56,height:56,borderRadius:"50%",background:"radial-gradient(circle,#00b894 0%,#00b89466 60%,#0a1f16 100%)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 30px rgba(0,184,148,0.3)",zIndex:2},
   pupil:{width:18,height:28,borderRadius:"50%",background:"#0a1f16"},
