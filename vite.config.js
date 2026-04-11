@@ -12,9 +12,9 @@ export default defineConfig({
       manifest: {
         name: 'Covo di Cthulhu',
         short_name: 'Covo',
-        description: 'La nostra app di coppia',
-        theme_color: '#0d1117',
-        background_color: '#0d1117',
+        description: "L'app di coppia per film, serate e tanto altro 🐙",
+        theme_color: '#0a1f16',
+        background_color: '#0a1f16',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/Covo-di-cthulhu/',
@@ -23,13 +23,26 @@ export default defineConfig({
           {
             src: 'icon-192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
           },
           {
             src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
