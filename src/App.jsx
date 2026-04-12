@@ -67,6 +67,7 @@ const RAND_ACT = ["Film a casa", "Cinema", "Passeggiata", "Gioco da tavolo", "Cu
 const RAND_FOOD = ["Pizza", "Sushi", "Pasta", "Hamburger", "Poke bowl", "Tacos", "Popcorn e snack", "Aperitivo", "Dolci fatti in casa"];
 const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", "Cioccolata calda", "Spritz", "Succo di frutta", "Bollicine"];
 
+const TMDB_KEY = "0f9faaec733c2818c364356c4fd6f2ea";
 const PJ_EMOJIS = ["👘", "🧸", "🐻", "🦊", "🐙", "🌙", "⭐", "🔮", "🧶", "🎀", "🐱", "🐰"];
 const PROFILE_EMOJIS = ["🐙", "🦑", "🐉", "🦊", "🐱", "🐻", "🦋", "🌙", "⭐", "🔮", "🎀", "👑", "🌸", "🍄", "🦄", "🐸"];
 const PROFILE_COLORS = ["#f0a500", "#00b894", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444", "#3b82f6", "#10b981"];
@@ -427,18 +428,6 @@ function SettingsPanel({ settingsOpen, setSettingsOpen, theme, toggleTheme, soun
               }} />
             </button>
           </div>
-          {/* TMDB API Key */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 13, color: T.text }}>🎬 TMDB API Key</span>
-            <input
-              type="text"
-              placeholder="Inserisci chiave..."
-              defaultValue={localStorage.getItem("tmdb-key") || ""}
-              onChange={(e) => localStorage.setItem("tmdb-key", e.target.value.trim())}
-              style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${T.border}`, background: `${T.card}`, color: T.text, fontSize: 12, outline: "none" }}
-            />
-            <span style={{ fontSize: 10, color: T.muted }}>Gratis su themoviedb.org</span>
-          </div>
         </div>
       )}
     </>
@@ -741,7 +730,7 @@ function MovieList({ data, save }) {
   const tmdbTimer = useRef(null);
 
   const fetchDetail = async (title) => {
-    const key = localStorage.getItem("tmdb-key");
+    const key = TMDB_KEY;
     if (!key) return;
     tap(); setDetailLoading(true); setDetail({ title, loading: true });
     try {
@@ -763,7 +752,7 @@ function MovieList({ data, save }) {
     clearTimeout(tmdbTimer.current);
     if (q.trim().length < 2) { setTmdbResults([]); return; }
     tmdbTimer.current = setTimeout(async () => {
-      const key = localStorage.getItem("tmdb-key");
+      const key = TMDB_KEY;
       if (!key) return;
       setTmdbLoading(true);
       try {
@@ -787,7 +776,7 @@ function MovieList({ data, save }) {
   // Group by category
   const grouped = {}; movies.forEach(m => { const c = gc(m); if (!grouped[c.id]) grouped[c.id] = { cat: c, items: [] }; grouped[c.id].items.push(m); });
 
-  const hasTmdbKey = !!localStorage.getItem("tmdb-key");
+  const hasTmdbKey = true;
 
   return (
     <div style={S.sec}><h2 style={S.secTitle}>📋 Lista Film</h2>
@@ -814,7 +803,6 @@ function MovieList({ data, save }) {
         </div>
       )}
       {tmdbLoading && <p style={{ fontSize: 12, color: T.muted, textAlign: "center" }}>Cercando su TMDB...</p>}
-      {!hasTmdbKey && <p style={{ fontSize: 10, color: T.muted, textAlign: "center", margin: 0 }}>💡 Aggiungi una TMDB API Key nelle ⚙️ Impostazioni per cercare film con locandina</p>}
 
       {/* Category select for new films */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{CATEGORIES.map(c => <button key={c.id} onClick={() => { tap(); setCat(c.id); }} style={{ ...S.catChip, background: cat === c.id ? c.color + "33" : "transparent", borderColor: cat === c.id ? c.color : "rgba(255,255,255,0.06)" }}>{c.icon} {c.label}</button>)}</div>
