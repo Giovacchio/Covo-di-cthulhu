@@ -737,7 +737,26 @@ function MovieList({ data, save }) {
   const [inp, setInp] = useState(""); const [cat, setCat] = useState("altro"); const [search, setSearch] = useState("");
   const [tmdbResults, setTmdbResults] = useState([]); const [tmdbLoading, setTmdbLoading] = useState(false);
   const [filterCat, setFilterCat] = useState("all"); const [sortBy, setSortBy] = useState("cat");
+  const [detail, setDetail] = useState(null); const [detailLoading, setDetailLoading] = useState(false);
   const tmdbTimer = useRef(null);
+
+  const fetchDetail = async (title) => {
+    const key = localStorage.getItem("tmdb-key");
+    if (!key) return;
+    tap(); setDetailLoading(true); setDetail({ title, loading: true });
+    try {
+      const q = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
+      const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${encodeURIComponent(q)}&language=it-IT&page=1`);
+      const d = await res.json();
+      if (d.results && d.results.length > 0) {
+        const m = d.results[0];
+        setDetail({ title, tmdb: m });
+      } else {
+        setDetail({ title, tmdb: null });
+      }
+    } catch (e) { setDetail({ title, tmdb: null }); }
+    setDetailLoading(false);
+  };
 
   const searchTMDB = (q) => {
     setInp(q);
@@ -821,10 +840,34 @@ function MovieList({ data, save }) {
             <span style={{ fontSize: 16 }}>{mc.icon}</span><span style={{ fontSize: 13, fontWeight: 700, color: mc.color }}>{mc.label}</span>
             <span style={{ fontSize: 10, color: "#7c8a6d" }}>({items.length})</span><div style={{ flex: 1, height: 1, background: mc.color + "33" }} />
           </div>
-          {items.map((m, i) => <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}` }}><span style={S.itemText}>{m}</span><button style={S.xBtn} onClick={() => rm(m)}>✕</button></div>)}
+          {items.map((m, i) => <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}`, cursor: hasTmdbKey ? "pointer" : "default" }} onClick={() => hasTmdbKey && fetchDetail(m)}><span style={S.itemText}>{m}</span>{hasTmdbKey && <span style={{ fontSize: 10, color: T.muted }}>ℹ️</span>}<button style={S.xBtn} onClick={(e) => { e.stopPropagation(); rm(m); }}>✕</button></div>)}
         </div>
-      )) : movies.map((m, i) => { const mc = gc(m); return <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}` }}><span style={{ fontSize: 14 }}>{mc.icon}</span><span style={S.itemText}>{m}</span><button style={S.xBtn} onClick={() => rm(m)}>✕</button></div>; })}
+      )) : movies.map((m, i) => { const mc = gc(m); return <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}`, cursor: hasTmdbKey ? "pointer" : "default" }} onClick={() => hasTmdbKey && fetchDetail(m)}><span style={{ fontSize: 14 }}>{mc.icon}</span><span style={S.itemText}>{m}</span>{hasTmdbKey && <span style={{ fontSize: 10, color: T.muted }}>ℹ️</span>}<button style={S.xBtn} onClick={(e) => { e.stopPropagation(); rm(m); }}>✕</button></div>; })}
       <p style={S.count}>{data.movies.length} film in lista{filterCat !== "all" ? ` (${movies.length} filtrati)` : ""}</p>
+
+      {/* Film detail modal */}
+      {detail && (
+        <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fade-in 0.2s ease" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "80vh", overflow: "auto", borderRadius: 20, background: T.bg1 === "#0a1f16" ? "#132e1a" : "#e8e6df", border: `1px solid ${T.border}`, padding: 20, animation: "pop-in 0.3s ease", display: "flex", flexDirection: "column", gap: 12 }}>
+            {detail.loading && <p style={{ textAlign: "center", color: T.muted, padding: 20 }}>Cercando info... 🔍</p>}
+            {!detail.loading && detail.tmdb && (
+              <>
+                {detail.tmdb.poster_path && <img src={`https://image.tmdb.org/t/p/w342${detail.tmdb.poster_path}`} alt="" style={{ width: "100%", borderRadius: 14, maxHeight: 300, objectFit: "cover" }} />}
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: T.text, margin: 0 }}>{detail.tmdb.title}</h3>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {detail.tmdb.release_date && <span style={{ fontSize: 12, color: T.muted }}>📅 {detail.tmdb.release_date.slice(0, 4)}</span>}
+                  {detail.tmdb.vote_average > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 8, background: `${T.accent1}22`, color: T.accent1 }}>⭐ {detail.tmdb.vote_average.toFixed(1)}/10</span>}
+                  {detail.tmdb.original_language && <span style={{ fontSize: 12, color: T.muted }}>🌍 {detail.tmdb.original_language.toUpperCase()}</span>}
+                </div>
+                {detail.tmdb.overview && <p style={{ fontSize: 13, color: T.text, lineHeight: 1.5, margin: 0 }}>{detail.tmdb.overview}</p>}
+                {!detail.tmdb.overview && <p style={{ fontSize: 13, color: T.muted }}>Nessuna descrizione disponibile</p>}
+              </>
+            )}
+            {!detail.loading && !detail.tmdb && <p style={{ textAlign: "center", color: T.muted, padding: 20 }}>Nessun risultato trovato su TMDB per "{detail.title}"</p>}
+            <button onClick={() => setDetail(null)} style={{ ...S.bigBtn, marginTop: 4 }}>Chiudi</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
