@@ -38,6 +38,7 @@ const SECTIONS = [
   { id: "gusti", icon: "💚", label: "I Nostri Gusti" },
   { id: "pigiami", icon: "🛌", label: "Classifica Pigiami" },
   { id: "achievements", icon: "🏆", label: "Traguardi" },
+  { id: "calendar", icon: "📅", label: "Calendario" },
   { id: "stats", icon: "📊", label: "Statistiche" },
 ];
 
@@ -296,6 +297,10 @@ export default function App() {
 
   const bgGrad = `linear-gradient(170deg,${T.bg1} 0%,${T.bg2} 40%,${T.bg3} 100%)`;
 
+  const [welcomed, setWelcomed] = useState(() => localStorage.getItem("covo-welcomed") === "1");
+  const dismissWelcome = () => { setWelcomed(true); localStorage.setItem("covo-welcomed", "1"); };
+
+  if (!welcomed) return <WelcomeOverlay onDone={dismissWelcome} />;
   if (authLoading) return <Skeleton />;
 
   if (!user) return (
@@ -352,6 +357,7 @@ export default function App() {
       {screen === "gusti" && <Gusti {...screenProps} />}
       {screen === "pigiami" && <Pigiami {...screenProps} />}
       {screen === "achievements" && <Achievements data={data} />}
+      {screen === "calendar" && <Calendar data={data} />}
       {screen === "stats" && <Stats {...screenProps} />}
       {screen === "profilo" && <Profile role={role} usersDoc={usersDoc} />}
     </div></div></ThemeCtx.Provider>
@@ -421,9 +427,55 @@ function SettingsPanel({ settingsOpen, setSettingsOpen, theme, toggleTheme, soun
               }} />
             </button>
           </div>
+          {/* TMDB API Key */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 13, color: T.text }}>🎬 TMDB API Key</span>
+            <input
+              type="text"
+              placeholder="Inserisci chiave..."
+              defaultValue={localStorage.getItem("tmdb-key") || ""}
+              onChange={(e) => localStorage.setItem("tmdb-key", e.target.value.trim())}
+              style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${T.border}`, background: `${T.card}`, color: T.text, fontSize: 12, outline: "none" }}
+            />
+            <span style={{ fontSize: 10, color: T.muted }}>Gratis su themoviedb.org</span>
+          </div>
         </div>
       )}
     </>
+  );
+}
+
+/* ═══ WELCOME ANIMATION ═══ */
+const LOVECRAFT_QUOTES = [
+  "Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn",
+  "Nella sua dimora a R'lyeh, il morto Cthulhu attende sognando",
+  "Non è morto ciò che in eterno può attendere",
+  "Benvenuti nel Covo... 🐙",
+];
+
+function WelcomeOverlay({ onDone }) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 600);
+    const t2 = setTimeout(() => setPhase(2), 1800);
+    const t3 = setTimeout(() => setPhase(3), 3200);
+    const t4 = setTimeout(() => { onDone(); }, 4800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, []);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#0a1f16", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }} onClick={onDone}>
+      <style>{`
+        @keyframes welcome-eye { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes welcome-title { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes welcome-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes welcome-out { to { opacity: 0; transform: scale(1.1); } }
+      `}</style>
+      <div style={{ fontSize: 80, animation: phase >= 0 ? "welcome-eye 0.8s ease forwards" : "none", opacity: 0 }}>🐙</div>
+      {phase >= 1 && <h1 style={{ fontSize: 32, fontWeight: 900, background: "linear-gradient(135deg,#00b894,#f0a500)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "welcome-title 0.6s ease forwards" }}>Covo di Cthulhu</h1>}
+      {phase >= 2 && <p style={{ fontSize: 14, color: "#7c8a6d", textAlign: "center", maxWidth: 280, animation: "welcome-fade 0.8s ease forwards", fontStyle: "italic" }}>{LOVECRAFT_QUOTES[Math.floor(Math.random() * LOVECRAFT_QUOTES.length)]}</p>}
+      {phase >= 3 && <div style={{ animation: "welcome-out 1.5s ease forwards", position: "absolute", inset: 0, background: "#0a1f16" }} />}
+      {phase >= 2 && <p style={{ position: "absolute", bottom: 40, fontSize: 11, color: "#4a6a3e", animation: "welcome-fade 0.5s ease" }}>Tocca per continuare</p>}
+    </div>
   );
 }
 
@@ -436,8 +488,23 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
   const [sugg, setSugg] = useState(null);
   const [slotAnim, setSlotAnim] = useState(false);
   const [pressedCard, setPressedCard] = useState(null);
+  const [eyeTaps, setEyeTaps] = useState(0);
+  const [easterEgg, setEasterEgg] = useState(false);
+  const eyeTimer = useRef(null);
   useEffect(() => { const t = setTimeout(() => setGlow(true), 300); return () => clearTimeout(t); }, []);
   const setAnniv = (d) => { save({ ...data, anniversary: d }); setEditingDate(false); };
+  const handleEyeTap = () => {
+    haptic(5);
+    const n = eyeTaps + 1;
+    setEyeTaps(n);
+    clearTimeout(eyeTimer.current);
+    if (n >= 5) {
+      setEasterEgg(true); setEyeTaps(0); playSound();
+      setTimeout(() => setEasterEgg(false), 3000);
+    } else {
+      eyeTimer.current = setTimeout(() => setEyeTaps(0), 1500);
+    }
+  };
 
   const randomSugg = () => {
     tap(); playSound(); setSlotAnim(true); setSugg(null);
@@ -472,6 +539,7 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
     wishlist: `${(data.wishlist||[]).filter(w=>w.done).length}/${(data.wishlist||[]).length}`,
     gusti: `${(data.gusti||[]).length} gusti`, pigiami: `${(data.pigiami||[]).length} pigiami`,
     achievements: `${achsDone}/${achs.length}`,
+    calendar: "Vista mese",
     stats: "Panoramica",
   };
 
@@ -525,7 +593,14 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
 
       <TentacleSep />
 
-      <div style={{ ...S.eyeWrap, opacity: glow ? 1 : 0, transform: glow ? "scale(1)" : "scale(0.7)" }}>
+      {easterEgg && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, animation: "fade-in 0.3s ease" }} onClick={() => setEasterEgg(false)}>
+          <div style={{ fontSize: 80, animation: "pop-in 0.5s ease" }}>🐙</div>
+          <p style={{ color: "#00b894", fontSize: 16, fontWeight: 800, animation: "fade-in 0.5s ease 0.2s both", textAlign: "center", padding: "0 20px" }}>{LOVECRAFT_QUOTES[Math.floor(Math.random() * LOVECRAFT_QUOTES.length)]}</p>
+          <p style={{ color: "#f0a500", fontSize: 11, animation: "fade-in 0.5s ease 0.5s both" }}>Hai risvegliato Cthulhu!</p>
+        </div>
+      )}
+      <div style={{ ...S.eyeWrap, opacity: glow ? 1 : 0, transform: glow ? "scale(1)" : "scale(0.7)", cursor: "pointer" }} onClick={handleEyeTap}>
         <div style={{ position: "absolute", width: 180, height: 180, left: "50%", top: "50%", borderRadius: "50%", background: `radial-gradient(ellipse, ${T.accent2}4d 0%, ${T.accent1}26 40%, transparent 70%)`, animation: "aurora 8s ease-in-out infinite", filter: "blur(20px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", width: 130, height: 130, animation: "orbit-spin 12s linear infinite" }}>
           {[...Array(8)].map((_, i) => <div key={i} style={{ position: "absolute", top: "50%", left: "50%", width: 3, height: 58, background: `linear-gradient(to bottom,${T.accent2},transparent)`, transformOrigin: "top center", borderRadius: 3, opacity: 0.55, transform: `rotate(${i*45}deg)` }} />)}
@@ -656,21 +731,91 @@ function Profile({ role, usersDoc }) {
   );
 }
 
-/* ═══ MOVIE LIST ═══ */
+/* ═══ MOVIE LIST — with TMDB search + filters ═══ */
 function MovieList({ data, save }) {
+  const T = useContext(ThemeCtx);
   const [inp, setInp] = useState(""); const [cat, setCat] = useState("altro"); const [search, setSearch] = useState("");
-  const add = () => { const t = inp.trim(); if (!t || data.movies.includes(t)) return; playSound(); haptic(); save({ ...data, movies: [...data.movies, t], categories: { ...(data.categories||{}), [t]: cat } }); setInp(""); };
+  const [tmdbResults, setTmdbResults] = useState([]); const [tmdbLoading, setTmdbLoading] = useState(false);
+  const [filterCat, setFilterCat] = useState("all"); const [sortBy, setSortBy] = useState("cat");
+  const tmdbTimer = useRef(null);
+
+  const searchTMDB = (q) => {
+    setInp(q);
+    clearTimeout(tmdbTimer.current);
+    if (q.trim().length < 2) { setTmdbResults([]); return; }
+    tmdbTimer.current = setTimeout(async () => {
+      const key = localStorage.getItem("tmdb-key");
+      if (!key) return;
+      setTmdbLoading(true);
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${encodeURIComponent(q)}&language=it-IT&page=1`);
+        const d = await res.json();
+        setTmdbResults((d.results || []).slice(0, 5));
+      } catch (e) { setTmdbResults([]); }
+      setTmdbLoading(false);
+    }, 400);
+  };
+
+  const addMovie = (title) => { if (!title || data.movies.includes(title)) return; playSound(); haptic(); save({ ...data, movies: [...data.movies, title], categories: { ...(data.categories||{}), [title]: cat } }); setInp(""); setTmdbResults([]); };
+  const addFromTmdb = (m) => { const title = `${m.title} (${(m.release_date||"").slice(0,4)})`; addMovie(title); };
   const rm = (m) => { tap(); const c = { ...(data.categories||{}) }; delete c[m]; save({ ...data, movies: data.movies.filter(x => x !== m), categories: c }); };
-  const filtered = data.movies.filter(m => m.toLowerCase().includes(search.toLowerCase()));
   const gc = (m) => CATEGORIES.find(c => c.id === ((data.categories||{})[m] || "altro")) || CATEGORIES[9];
-  const grouped = {}; filtered.forEach(m => { const c = gc(m); if (!grouped[c.id]) grouped[c.id] = { cat: c, items: [] }; grouped[c.id].items.push(m); });
+
+  // Filter & sort
+  let movies = data.movies.filter(m => m.toLowerCase().includes(search.toLowerCase()));
+  if (filterCat !== "all") movies = movies.filter(m => ((data.categories||{})[m] || "altro") === filterCat);
+  if (sortBy === "name") movies = [...movies].sort((a,b) => a.localeCompare(b));
+  // Group by category
+  const grouped = {}; movies.forEach(m => { const c = gc(m); if (!grouped[c.id]) grouped[c.id] = { cat: c, items: [] }; grouped[c.id].items.push(m); });
+
+  const hasTmdbKey = !!localStorage.getItem("tmdb-key");
+
   return (
     <div style={S.sec}><h2 style={S.secTitle}>📋 Lista Film</h2>
-      {data.movies.length > 3 && <input style={S.input} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Cerca film..." />}
-      <div style={S.row}><input style={S.input} value={inp} onChange={(e) => setInp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder="Aggiungi un film..." /><button style={S.addBtn} onClick={add}>+</button></div>
+      {/* Search & add */}
+      {data.movies.length > 3 && <input style={S.input} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Cerca nella lista..." />}
+      <div style={S.row}>
+        <input style={S.input} value={inp} onChange={(e) => hasTmdbKey ? searchTMDB(e.target.value) : setInp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMovie(inp.trim())} placeholder={hasTmdbKey ? "🔍 Cerca su TMDB..." : "Aggiungi un film..."} />
+        <button style={S.addBtn} onClick={() => addMovie(inp.trim())}>+</button>
+      </div>
+
+      {/* TMDB results */}
+      {tmdbResults.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {tmdbResults.map(m => (
+            <div key={m.id} onClick={() => addFromTmdb(m)} style={{ display: "flex", gap: 10, padding: "8px 12px", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, cursor: "pointer", animation: "fade-in 0.2s ease" }}>
+              {m.poster_path && <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} alt="" style={{ width: 40, height: 60, borderRadius: 6, objectFit: "cover" }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{m.title} <span style={{ color: T.muted, fontWeight: 400 }}>({(m.release_date||"").slice(0,4)})</span></div>
+                <div style={{ fontSize: 11, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{m.overview || "Nessuna descrizione"}</div>
+              </div>
+              <span style={{ color: T.accent2, fontSize: 18, alignSelf: "center" }}>+</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {tmdbLoading && <p style={{ fontSize: 12, color: T.muted, textAlign: "center" }}>Cercando su TMDB...</p>}
+      {!hasTmdbKey && <p style={{ fontSize: 10, color: T.muted, textAlign: "center", margin: 0 }}>💡 Aggiungi una TMDB API Key nelle ⚙️ Impostazioni per cercare film con locandina</p>}
+
+      {/* Category select for new films */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{CATEGORIES.map(c => <button key={c.id} onClick={() => { tap(); setCat(c.id); }} style={{ ...S.catChip, background: cat === c.id ? c.color + "33" : "transparent", borderColor: cat === c.id ? c.color : "rgba(255,255,255,0.06)" }}>{c.icon} {c.label}</button>)}</div>
-      {filtered.length === 0 && <p style={S.empty}>{search ? "Nessun risultato!" : "La lista è vuota!"}</p>}
-      {Object.values(grouped).map(({ cat: mc, items }) => (
+
+      {/* Filter & sort bar */}
+      {data.movies.length > 3 && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <select value={filterCat} onChange={e => { tap(); setFilterCat(e.target.value); }} style={{ ...S.input, flex: "none", width: "auto", fontSize: 12, padding: "6px 10px" }}>
+            <option value="all">Tutti i generi</option>
+            {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+          </select>
+          <select value={sortBy} onChange={e => { tap(); setSortBy(e.target.value); }} style={{ ...S.input, flex: "none", width: "auto", fontSize: 12, padding: "6px 10px" }}>
+            <option value="cat">Per categoria</option>
+            <option value="name">Alfabetico</option>
+          </select>
+        </div>
+      )}
+
+      {movies.length === 0 && <p style={S.empty}>{search || filterCat !== "all" ? "Nessun risultato!" : "La lista è vuota!"}</p>}
+      {sortBy === "cat" ? Object.values(grouped).map(({ cat: mc, items }) => (
         <div key={mc.id}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "10px 0 6px" }}>
             <span style={{ fontSize: 16 }}>{mc.icon}</span><span style={{ fontSize: 13, fontWeight: 700, color: mc.color }}>{mc.label}</span>
@@ -678,8 +823,8 @@ function MovieList({ data, save }) {
           </div>
           {items.map((m, i) => <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}` }}><span style={S.itemText}>{m}</span><button style={S.xBtn} onClick={() => rm(m)}>✕</button></div>)}
         </div>
-      ))}
-      <p style={S.count}>{data.movies.length} film in lista</p>
+      )) : movies.map((m, i) => { const mc = gc(m); return <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}` }}><span style={{ fontSize: 14 }}>{mc.icon}</span><span style={S.itemText}>{m}</span><button style={S.xBtn} onClick={() => rm(m)}>✕</button></div>; })}
+      <p style={S.count}>{data.movies.length} film in lista{filterCat !== "all" ? ` (${movies.length} filtrati)` : ""}</p>
     </div>
   );
 }
@@ -1003,6 +1148,87 @@ function Stats({ data, usersDoc }) {
 }
 
 /* ═══ STYLES ═══ */
+/* ═══ CALENDAR ═══ */
+function Calendar({ data }) {
+  const T = useContext(ThemeCtx);
+  const [month, setMonth] = useState(() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; });
+  const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+  const DAYS = ["Lu","Ma","Me","Gi","Ve","Sa","Do"];
+  const daysInMonth = new Date(month.y, month.m + 1, 0).getDate();
+  const firstDay = (new Date(month.y, month.m, 1).getDay() + 6) % 7;
+  const prev = () => { tap(); setMonth(m => m.m === 0 ? { y: m.y - 1, m: 11 } : { y: m.y, m: m.m - 1 }); };
+  const next = () => { tap(); setMonth(m => m.m === 11 ? { y: m.y + 1, m: 0 } : { y: m.y, m: m.m + 1 }); };
+
+  // Build events map: day -> { watched: [...], plans: [...] }
+  const events = {};
+  (data.watched || []).forEach(w => {
+    if (!w.date) return;
+    const p = w.date.split("/");
+    if (p.length >= 3 && +p[1] === month.m + 1 && +p[2] === month.y) {
+      const d = +p[0]; if (!events[d]) events[d] = { watched: [], plans: [] }; events[d].watched.push(w.title);
+    }
+  });
+  (data.plans || []).forEach(pl => {
+    if (!pl.date) return;
+    const p = pl.date.split("-");
+    if (p.length >= 3 && +p[1] === month.m + 1 && +p[0] === month.y) {
+      const d = +p[2]; if (!events[d]) events[d] = { watched: [], plans: [] }; events[d].plans.push(pl.activity || pl.movie || "Serata");
+    }
+  });
+
+  const today = new Date();
+  const isToday = (d) => d === today.getDate() && month.m === today.getMonth() && month.y === today.getFullYear();
+
+  return (
+    <div style={S.sec}>
+      <h2 style={{ ...S.secTitle, color: T.accent1 }}>📅 Calendario</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <button onClick={prev} style={{ ...S.emojiBtn, fontSize: 18, padding: "6px 12px" }}>←</button>
+        <span style={{ fontSize: 16, fontWeight: 800, color: T.text }}>{MONTHS[month.m]} {month.y}</span>
+        <button onClick={next} style={{ ...S.emojiBtn, fontSize: 18, padding: "6px 12px" }}>→</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, textAlign: "center" }}>
+        {DAYS.map(d => <div key={d} style={{ fontSize: 10, fontWeight: 700, color: T.muted, padding: "4px 0" }}>{d}</div>)}
+        {[...Array(firstDay)].map((_, i) => <div key={`e${i}`} />)}
+        {[...Array(daysInMonth)].map((_, i) => {
+          const d = i + 1; const ev = events[d]; const hasW = ev?.watched?.length > 0; const hasP = ev?.plans?.length > 0;
+          return (
+            <div key={d} style={{
+              padding: "6px 2px", borderRadius: 8, fontSize: 12, fontWeight: isToday(d) ? 800 : 400,
+              color: isToday(d) ? T.bg1 : hasW || hasP ? T.text : T.muted,
+              background: isToday(d) ? T.accent1 : hasW ? `${T.accent2}22` : hasP ? `${T.accent1}15` : "transparent",
+              border: hasP && !isToday(d) ? `1px solid ${T.accent1}33` : "1px solid transparent",
+              position: "relative",
+            }}>
+              {d}
+              {(hasW || hasP) && !isToday(d) && (
+                <div style={{ display: "flex", gap: 2, justifyContent: "center", marginTop: 1 }}>
+                  {hasW && <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.accent2 }} />}
+                  {hasP && <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.accent1 }} />}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: T.accent2 }} /><span style={{ fontSize: 11, color: T.muted }}>Film visto</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: T.accent1 }} /><span style={{ fontSize: 11, color: T.muted }}>Serata</span></div>
+      </div>
+      {/* Events for selected month */}
+      {Object.entries(events).sort((a,b) => +a[0] - +b[0]).map(([d, ev]) => (
+        <div key={d} style={{ ...S.item, animation: "fade-in 0.3s ease" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.accent1, minWidth: 24 }}>{d}</span>
+          <div style={{ flex: 1 }}>
+            {ev.watched.map((t, i) => <div key={`w${i}`} style={{ fontSize: 12, color: T.accent2 }}>🎬 {t}</div>)}
+            {ev.plans.map((t, i) => <div key={`p${i}`} style={{ fontSize: 12, color: T.accent1 }}>🕯️ {t}</div>)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const S = {
   loadWrap:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a1f16",fontFamily:"'Nunito',sans-serif"},
   authPage:{fontFamily:"'Nunito',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",padding:24},
