@@ -17,6 +17,7 @@ export default defineConfig({
         background_color: '#0a1f16',
         display: 'standalone',
         orientation: 'portrait',
+        id: '/Covo-di-cthulhu/',
         start_url: '/Covo-di-cthulhu/',
         scope: '/Covo-di-cthulhu/',
         icons: [
@@ -50,5 +51,21 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg,ico}']
       }
     })
+    screenshots: [
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Covo di Cthulhu'
+          },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Covo di Cthulhu'
+          }
+        ],
   ]
 })
