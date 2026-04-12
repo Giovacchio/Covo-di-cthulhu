@@ -38,6 +38,7 @@ const SECTIONS = [
   { id: "gusti", icon: "💚", label: "I Nostri Gusti" },
   { id: "pigiami", icon: "🛌", label: "Classifica Pigiami" },
   { id: "achievements", icon: "🏆", label: "Traguardi" },
+  { id: "recap", icon: "📸", label: "Recap Mese" },
   { id: "calendar", icon: "📅", label: "Calendario" },
   { id: "stats", icon: "📊", label: "Statistiche" },
 ];
@@ -67,12 +68,13 @@ const RAND_ACT = ["Film a casa", "Cinema", "Passeggiata", "Gioco da tavolo", "Cu
 const RAND_FOOD = ["Pizza", "Sushi", "Pasta", "Hamburger", "Poke bowl", "Tacos", "Popcorn e snack", "Aperitivo", "Dolci fatti in casa"];
 const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", "Cioccolata calda", "Spritz", "Succo di frutta", "Bollicine"];
 
+const QUICK_MSGS = ["Mi manchi 💜","Stasera film? 🎬","Ti amo 💕","Pensavo a te 🌙","Ho fame 🍕","Abbraccio? 🤗","Sei bellissim* ✨","Countdown: torno da te! 🏃"];
 const TMDB_KEY = "0f9faaec733c2818c364356c4fd6f2ea";
 const PJ_EMOJIS = ["👘", "🧸", "🐻", "🦊", "🐙", "🌙", "⭐", "🔮", "🧶", "🎀", "🐱", "🐰"];
 const PROFILE_EMOJIS = ["🐙", "🦑", "🐉", "🦊", "🐱", "🐻", "🦋", "🌙", "⭐", "🔮", "🎀", "👑", "🌸", "🍄", "🦄", "🐸"];
 const PROFILE_COLORS = ["#f0a500", "#00b894", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444", "#3b82f6", "#10b981"];
 
-const EMPTY = { movies: [], watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [], gusti: [], pigiami: [] };
+const EMPTY = { movies: [], watched: [], plans: [], reviews: {}, anniversary: null, categories: {}, reactions: {}, wishlist: [], gusti: [], pigiami: [], messages: [] };
 
 function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return `hsl(${Math.abs(h) % 360}, 50%, 38%)`; }
 function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -350,7 +352,7 @@ export default function App() {
     <ThemeCtx.Provider value={T}><Toast msg={toast} /><SettingsPanel {...settingsProps} /><div style={{ ...S.page, background: bgGrad, color: T.text }} key={screen}><div style={{ animation: `${animDir} 0.3s ease` }}>
       <button style={S.backBtn} onClick={() => { goBack(); window.history.back(); }}>← Covo</button>
       {screen === "movies" && <MovieList {...screenProps} />}
-      {screen === "wheel" && <Wheel movies={data.movies} />}
+      {screen === "wheel" && <Wheel movies={data.movies} categories={data.categories || {}} />}
       {screen === "watched" && <Watched {...screenProps} />}
       {screen === "planner" && <Planner {...screenProps} />}
       {screen === "reviews" && <Reviews {...screenProps} />}
@@ -358,6 +360,7 @@ export default function App() {
       {screen === "gusti" && <Gusti {...screenProps} />}
       {screen === "pigiami" && <Pigiami {...screenProps} />}
       {screen === "achievements" && <Achievements data={data} />}
+      {screen === "recap" && <MonthlyRecap data={data} />}
       {screen === "calendar" && <Calendar data={data} />}
       {screen === "stats" && <Stats {...screenProps} />}
       {screen === "profilo" && <Profile role={role} usersDoc={usersDoc} />}
@@ -469,7 +472,7 @@ function WelcomeOverlay({ onDone }) {
 }
 
 /* ═══ HUB ═══ */
-function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
+function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji, otherEmoji }) {
   const T = useContext(ThemeCtx);
   const { movies, watched, plans, anniversary } = data;
   const [glow, setGlow] = useState(false);
@@ -528,6 +531,7 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
     wishlist: `${(data.wishlist||[]).filter(w=>w.done).length}/${(data.wishlist||[]).length}`,
     gusti: `${(data.gusti||[]).length} gusti`, pigiami: `${(data.pigiami||[]).length} pigiami`,
     achievements: `${achsDone}/${achs.length}`,
+    recap: "Il vostro mese",
     calendar: "Vista mese",
     stats: "Panoramica",
   };
@@ -555,6 +559,29 @@ function Hub({ onGo, data, save, role, user, usersDoc, logout, myEmoji }) {
           {oN && <div style={{ fontSize: 11, color: T.muted }}>con {oN} 💜</div>}
         </div>
         <button style={S.linkBtn} onClick={logout}>Esci</button>
+      </div>
+
+      {/* Quick messages */}
+      {(data.messages||[]).filter(m => m.to === role && !m.read).length > 0 && (
+        <div style={{ width: "100%", maxWidth: 360, marginBottom: 8, animation: "pop-in 0.4s ease" }}>
+          {(data.messages||[]).filter(m => m.to === role && !m.read).map((m, i) => (
+            <div key={m.id} style={{ padding: "10px 14px", background: `${T.accent2}15`, border: `1px solid ${T.accent2}33`, borderRadius: 12, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>{otherEmoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{m.text}</div>
+                <div style={{ fontSize: 10, color: T.muted }}>{m.time}</div>
+              </div>
+              <button onClick={() => { tap(); const msgs = (data.messages||[]).map(x => x.id === m.id ? {...x, read: true} : x); save({...data, messages: msgs}); }} style={{ ...S.emojiBtn, fontSize: 12, padding: "4px 10px" }}>✓</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Send quick message */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", width: "100%", maxWidth: 360, marginBottom: 8 }}>
+        {QUICK_MSGS.slice(0, 4).map(msg => (
+          <button key={msg} onClick={() => { tap(); playSound(); save({...data, messages: [...(data.messages||[]), { id: Date.now(), from: role, to: role === "lui" ? "lei" : "lui", text: msg, time: new Date().toLocaleTimeString("it-IT", {hour:"2-digit",minute:"2-digit"}), read: false }]}); }} style={{ padding: "6px 10px", borderRadius: 20, border: `1px solid ${T.accent2}33`, background: `${T.accent2}0a`, color: T.accent2, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{msg}</button>
+        ))}
       </div>
 
       {/* Anniversary */}
@@ -833,6 +860,9 @@ function MovieList({ data, save }) {
       )) : movies.map((m, i) => { const mc = gc(m); return <div key={m} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, borderLeft: `3px solid ${mc.color}`, cursor: hasTmdbKey ? "pointer" : "default" }} onClick={() => hasTmdbKey && fetchDetail(m)}><span style={{ fontSize: 14 }}>{mc.icon}</span><span style={S.itemText}>{m}</span>{hasTmdbKey && <span style={{ fontSize: 10, color: T.muted }}>ℹ️</span>}<button style={S.xBtn} onClick={(e) => { e.stopPropagation(); rm(m); }}>✕</button></div>; })}
       <p style={S.count}>{data.movies.length} film in lista{filterCat !== "all" ? ` (${movies.length} filtrati)` : ""}</p>
 
+      {/* TMDB Suggestions */}
+      <TmdbSuggestions categories={data.categories || {}} movies={data.movies} onAdd={addMovie} cat={cat} />
+
       {/* Film detail modal */}
       {detail && (
         <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fade-in 0.2s ease" }}>
@@ -860,25 +890,43 @@ function MovieList({ data, save }) {
   );
 }
 
-/* ═══ WHEEL ═══ */
-function Wheel({ movies }) {
+/* ═══ WHEEL — with genre filter ═══ */
+function Wheel({ movies, categories }) {
+  const T = useContext(ThemeCtx);
   const [rot, setRot] = useState(0); const [spinning, setSpinning] = useState(false); const [picked, setPicked] = useState(null);
   const [confettiKey, setConfettiKey] = useState(0);
+  const [wheelFilter, setWheelFilter] = useState("all");
+
+  const filtered = wheelFilter === "all" ? movies : movies.filter(m => (categories[m] || "altro") === wheelFilter);
+
   const spin = () => {
-    if (movies.length < 2 || spinning) return; tap(); playSound(); setSpinning(true); setPicked(null);
+    if (filtered.length < 2 || spinning) return; tap(); playSound(); setSpinning(true); setPicked(null);
     const nr = rot + 1440 + Math.random() * 1440; setRot(nr);
-    setTimeout(() => { const seg = 360/movies.length; const norm = nr%360; const idx = Math.floor(((360-norm+seg/2)%360)/seg)%movies.length; setPicked(movies[idx]); setSpinning(false); setConfettiKey(k=>k+1); playSound(); haptic(50); }, 3600);
+    setTimeout(() => { const seg = 360/filtered.length; const norm = nr%360; const idx = Math.floor(((360-norm+seg/2)%360)/seg)%filtered.length; setPicked(filtered[idx]); setSpinning(false); setConfettiKey(k=>k+1); playSound(); haptic(50); }, 3600);
   };
-  const sz=280, cx=sz/2, cy=sz/2, r=sz/2-6, seg=movies.length?360/movies.length:360;
+  const sz=280, cx=sz/2, cy=sz/2, r=sz/2-6, seg=filtered.length?360/filtered.length:360;
   const pol=(a,rd)=>{const d=((a-90)*Math.PI)/180;return[cx+rd*Math.cos(d),cy+rd*Math.sin(d)];};
+
+  // Available genres from movie list
+  const availGenres = [...new Set(movies.map(m => categories[m] || "altro"))];
+
   return (
     <div style={{ ...S.sec, alignItems: "center", position: "relative" }}><h2 style={S.secTitle}>🎰 Estrazione</h2>
-      {movies.length < 2 ? <p style={S.empty}>Servono almeno 2 film!</p> : <>
+      {/* Genre filter */}
+      {availGenres.length > 1 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", marginBottom: 8 }}>
+          <button onClick={() => { tap(); setWheelFilter("all"); }} style={{ ...S.catChip, background: wheelFilter === "all" ? `${T.accent2}33` : "transparent", borderColor: wheelFilter === "all" ? T.accent2 : T.border }}>🎬 Tutti ({movies.length})</button>
+          {availGenres.map(gId => { const gc = CATEGORIES.find(c => c.id === gId) || CATEGORIES[9]; const cnt = movies.filter(m => (categories[m]||"altro") === gId).length; return (
+            <button key={gId} onClick={() => { tap(); setWheelFilter(gId); }} style={{ ...S.catChip, background: wheelFilter === gId ? gc.color + "33" : "transparent", borderColor: wheelFilter === gId ? gc.color : T.border }}>{gc.icon} {gc.label} ({cnt})</button>
+          ); })}
+        </div>
+      )}
+      {filtered.length < 2 ? <p style={S.empty}>{movies.length < 2 ? "Servono almeno 2 film!" : "Servono almeno 2 film in questo genere!"}</p> : <>
         <div style={{ position: "relative" }}>
           <Confetti key={confettiKey} active={!!picked} />
           <div style={S.pointer}>▼</div>
           <svg width={sz} height={sz} style={{ transition: spinning?"transform 3.5s cubic-bezier(.17,.67,.12,.99)":"none", transform:`rotate(${rot}deg)` }}>
-            {movies.map((m,i)=>{const a1=i*seg,a2=a1+seg;const[x1,y1]=pol(a1,r);const[x2,y2]=pol(a2,r);const lg=seg>180?1:0;const mid=a1+seg/2;const[tx,ty]=pol(mid,r*0.6);return<g key={i}><path d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} Z`} fill={hash(m)} stroke="#0a1f16" strokeWidth="2"/><text x={tx} y={ty} fill="#fff" fontSize={movies.length>8?8:10} fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${mid},${tx},${ty})`}>{m.length>13?m.slice(0,11)+"…":m}</text></g>;})}
+            {filtered.map((m,i)=>{const a1=i*seg,a2=a1+seg;const[x1,y1]=pol(a1,r);const[x2,y2]=pol(a2,r);const lg=seg>180?1:0;const mid=a1+seg/2;const[tx,ty]=pol(mid,r*0.6);return<g key={i}><path d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} Z`} fill={hash(m)} stroke="#0a1f16" strokeWidth="2"/><text x={tx} y={ty} fill="#fff" fontSize={filtered.length>8?8:10} fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${mid},${tx},${ty})`}>{m.length>13?m.slice(0,11)+"…":m}</text></g>;})}
           </svg>
         </div>
         <button style={{ ...S.bigBtn, opacity: spinning?0.5:1 }} onClick={spin} disabled={spinning}>{spinning?"Girando...":"🐙 Estrai dal Covo!"}</button>
@@ -943,6 +991,40 @@ function Watched({ data, save }) {
               </>
             )}
             {!detail.loading && !detail.tmdb && <p style={{ textAlign: "center", color: T.muted, padding: 20 }}>Nessun risultato trovato su TMDB per "{detail.title}"</p>}
+
+            {/* Our review */}
+            {!detail.loading && (() => {
+              const rev = (data.reviews || {})[detail.title];
+              if (!rev) return <p style={{ fontSize: 12, color: T.muted, textAlign: "center", padding: "8px 0", borderTop: `1px solid ${T.border}`, marginTop: 4 }}>📝 Nessuna recensione vostra per questo film</p>;
+              return (
+                <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: T.text }}>📝 La nostra recensione</span>
+                    <span style={{ ...S.scoreBadge, fontSize: 16, background: rev.avg >= 7 ? "rgba(76,175,80,.25)" : rev.avg >= 5 ? "rgba(255,193,7,.25)" : "rgba(233,69,96,.25)", color: rev.avg >= 7 ? "#81c784" : rev.avg >= 5 ? "#ffd54f" : "#e94560" }}>{rev.avg}/10</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, fontSize: 13 }}>
+                    {rev.lui !== undefined && <span style={{ color: T.text }}>🙋‍♂️ <strong>{rev.lui}/10</strong></span>}
+                    {rev.lei !== undefined && <span style={{ color: T.text }}>🙋‍♀️ <strong>{rev.lei}/10</strong></span>}
+                  </div>
+                  {rev.lui !== undefined && rev.lei !== undefined && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10 }}>🙋‍♂️</span>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: T.card, display: "flex" }}>
+                        <div style={{ width: `${(rev.lui / 10) * 100}%`, background: "linear-gradient(90deg, #4fc3f7, #4fc3f788)", borderRadius: 3 }} />
+                      </div>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, overflow: "hidden", background: T.card, display: "flex", justifyContent: "flex-end" }}>
+                        <div style={{ width: `${(rev.lei / 10) * 100}%`, background: "linear-gradient(270deg, #ec4899, #ec489988)", borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: 10 }}>🙋‍♀️</span>
+                    </div>
+                  )}
+                  {rev.luiComment && <div style={{ fontSize: 12, color: T.muted }}>🙋‍♂️ "{rev.luiComment}"</div>}
+                  {rev.leiComment && <div style={{ fontSize: 12, color: T.muted }}>🙋‍♀️ "{rev.leiComment}"</div>}
+                  {rev.date && <div style={{ fontSize: 10, color: T.muted }}>Recensito il {rev.date}</div>}
+                </div>
+              );
+            })()}
+
             <button onClick={() => setDetail(null)} style={{ ...S.bigBtn, marginTop: 4 }}>Chiudi</button>
           </div>
         </div>
@@ -951,10 +1033,13 @@ function Watched({ data, save }) {
   );
 }
 
-/* ═══ PLANNER ═══ */
+/* ═══ PLANNER — with shopping list ═══ */
 function Planner({ data, save }) {
-  const [f, sF] = useState({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"" });
-  const add = () => { if (!f.date) return; tap(); playSound(); save({ ...data, plans: [...data.plans, { ...f, id: Date.now() }] }); sF({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"" }); };
+  const T = useContext(ThemeCtx);
+  const [f, sF] = useState({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"", shopping:[] });
+  const [shopInp, setShopInp] = useState("");
+  const addShopItem = () => { const t = shopInp.trim(); if (!t) return; tap(); sF({...f, shopping: [...(f.shopping||[]), { text: t, done: false }]}); setShopInp(""); };
+  const add = () => { if (!f.date) return; tap(); playSound(); save({ ...data, plans: [...data.plans, { ...f, id: Date.now() }] }); sF({ date:"", time:"", movie:"", activity:"", place:"", food:"", drink:"", note:"", shopping:[] }); };
   const rm = (id) => { tap(); save({ ...data, plans: data.plans.filter(p => p.id !== id) }); };
   const future = data.plans.filter(p => { const d = daysUntil(p.date); return d !== null && d >= 0; }).sort((a,b) => (daysUntil(a.date)||0)-(daysUntil(b.date)||0));
   const past = data.plans.filter(p => { const d = daysUntil(p.date); return d !== null && d < 0; }).sort((a,b) => (daysUntil(b.date)||0)-(daysUntil(a.date)||0));
@@ -969,6 +1054,15 @@ function Planner({ data, save }) {
         </div>
       </div>
       {p.movie&&<div>🎬 {p.movie}</div>}{p.activity&&<div>🎭 {p.activity}</div>}{p.place&&<div>📍 {p.place}</div>}{p.food&&<div>🍕 {p.food}</div>}{p.drink&&<div>🍷 {p.drink}</div>}{p.note&&<div style={{ fontSize: 12, color: "#7c8a6d", fontStyle: "italic" }}>"{p.note}"</div>}
+      {(p.shopping||[]).length > 0 && (
+        <div style={{ borderTop: `1px solid ${T.border || "rgba(255,255,255,0.06)"}`, paddingTop: 6, marginTop: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#7c8a6d" }}>🛒 Spesa:</div>
+          {p.shopping.map((s, si) => {
+            const toggleShop = () => { const plans = data.plans.map(pl => pl.id === p.id ? {...pl, shopping: pl.shopping.map((x,xi) => xi === si ? {...x, done: !x.done} : x)} : pl); save({...data, plans}); };
+            return <div key={si} onClick={toggleShop} style={{ fontSize: 12, color: s.done ? "#4a6a3e" : "#eae2d6", textDecoration: s.done ? "line-through" : "none", cursor: "pointer", padding: "2px 0" }}>{s.done ? "✅" : "⬜"} {s.text}</div>;
+          })}
+        </div>
+      )}
     </div>); };
   return (
     <div style={S.sec}><h2 style={S.secTitle}>🕯️ Date Night Planner</h2>
@@ -980,6 +1074,20 @@ function Planner({ data, save }) {
         <input style={S.input} placeholder="🍕 Cibo" value={f.food} onChange={e => sF({...f, food:e.target.value})} />
         <input style={S.input} placeholder="🍷 Bevande" value={f.drink} onChange={e => sF({...f, drink:e.target.value})} />
         <input style={S.input} placeholder="📝 Note..." value={f.note} onChange={e => sF({...f, note:e.target.value})} />
+        {/* Shopping list */}
+        <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginBottom: 6 }}>🛒 Lista della spesa</div>
+          <div style={S.row}>
+            <input style={{ ...S.input, fontSize: 12 }} value={shopInp} onChange={e => setShopInp(e.target.value)} onKeyDown={e => e.key === "Enter" && addShopItem()} placeholder="Aggiungi..." />
+            <button style={{ ...S.addBtn, width: 32, fontSize: 16 }} onClick={addShopItem}>+</button>
+          </div>
+          {(f.shopping||[]).map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", fontSize: 12, color: T.text }}>
+              <span>•</span><span>{s.text}</span>
+              <button onClick={() => sF({...f, shopping: f.shopping.filter((_, j) => j !== i)})} style={{ ...S.xBtn, width: 20, height: 20, fontSize: 10, marginLeft: "auto" }}>✕</button>
+            </div>
+          ))}
+        </div>
         <button style={S.bigBtn} onClick={add}>+ Pianifica Serata</button>
       </div>
       {future.length > 0 && <h3 style={{ fontSize: 14, color: "#00b894", margin: "8px 0 4px" }}>🔜 Prossime serate</h3>}
@@ -1220,6 +1328,151 @@ function Stats({ data, usersDoc }) {
 }
 
 /* ═══ STYLES ═══ */
+/* ═══ TMDB SUGGESTIONS ═══ */
+function TmdbSuggestions({ categories, movies, onAdd, cat }) {
+  const T = useContext(ThemeCtx);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  const GENRE_MAP = { azione: 28, commedia: 35, horror: 27, romantico: 10749, scifi: 878, thriller: 53, dramma: 18, animazione: 16, documentario: 99 };
+
+  const fetchSuggestions = async () => {
+    tap(); setLoading(true); setFetched(true);
+    // Find most common genre
+    const gc = {};
+    movies.forEach(m => { const c = categories[m] || "altro"; gc[c] = (gc[c]||0) + 1; });
+    const topGenre = Object.entries(gc).sort((a,b) => b[1] - a[1])[0];
+    const genreId = topGenre ? GENRE_MAP[topGenre[0]] : 28;
+    if (!genreId) { setSuggestions([]); setLoading(false); return; }
+    try {
+      const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_genres=${genreId}&language=it-IT&sort_by=vote_average.desc&vote_count.gte=500&page=1`);
+      const d = await res.json();
+      const existing = new Set(movies.map(m => m.toLowerCase()));
+      const filtered = (d.results || []).filter(m => !existing.has(m.title.toLowerCase())).slice(0, 6);
+      setSuggestions(filtered);
+    } catch (e) { setSuggestions([]); }
+    setLoading(false);
+  };
+
+  if (movies.length < 1) return null;
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {!fetched && (
+        <button onClick={fetchSuggestions} style={{ ...S.suggBtn, fontSize: 13, padding: "10px 0", borderColor: `${T.accent2}44`, background: `${T.accent2}0a`, color: T.accent2 }}>
+          💡 Suggerimenti in base ai tuoi gusti
+        </button>
+      )}
+      {loading && <p style={{ fontSize: 12, color: T.muted, textAlign: "center" }}>Cercando suggerimenti...</p>}
+      {suggestions.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.accent2, margin: "8px 0 6px" }}>💡 Potrebbe piacervi anche:</div>
+          {suggestions.map(m => (
+            <div key={m.id} onClick={() => { const title = `${m.title} (${(m.release_date||"").slice(0,4)})`; onAdd(title); setSuggestions(s => s.filter(x => x.id !== m.id)); }} style={{ display: "flex", gap: 10, padding: "8px 12px", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, cursor: "pointer", marginBottom: 4, animation: "fade-in 0.2s ease" }}>
+              {m.poster_path && <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} alt="" style={{ width: 36, height: 54, borderRadius: 6, objectFit: "cover" }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{m.title} <span style={{ color: T.muted, fontWeight: 400 }}>({(m.release_date||"").slice(0,4)})</span></div>
+                <div style={{ fontSize: 11, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.overview?.slice(0, 80) || ""}...</div>
+                {m.vote_average > 0 && <span style={{ fontSize: 10, color: T.accent1 }}>⭐ {m.vote_average.toFixed(1)}</span>}
+              </div>
+              <span style={{ color: T.accent2, fontSize: 18, alignSelf: "center" }}>+</span>
+            </div>
+          ))}
+          <button onClick={fetchSuggestions} style={{ ...S.catChip, width: "100%", textAlign: "center", marginTop: 4, color: T.accent2, borderColor: `${T.accent2}33` }}>🔄 Altri suggerimenti</button>
+        </>
+      )}
+      {fetched && !loading && suggestions.length === 0 && <p style={{ fontSize: 12, color: T.muted, textAlign: "center" }}>Nessun suggerimento trovato</p>}
+    </div>
+  );
+}
+
+/* ═══ MONTHLY RECAP ═══ */
+function MonthlyRecap({ data }) {
+  const T = useContext(ThemeCtx);
+  const [month, setMonth] = useState(() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; });
+  const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+  const prev = () => { tap(); setMonth(m => m.m === 0 ? { y: m.y - 1, m: 11 } : { y: m.y, m: m.m - 1 }); };
+  const next = () => { tap(); setMonth(m => m.m === 11 ? { y: m.y + 1, m: 0 } : { y: m.y, m: m.m + 1 }); };
+
+  // Watched this month
+  const mWatched = (data.watched || []).filter(w => {
+    if (!w.date) return false;
+    const p = w.date.split("/");
+    return p.length >= 3 && +p[1] === month.m + 1 && +p[2] === month.y;
+  });
+
+  // Plans this month
+  const mPlans = (data.plans || []).filter(p => {
+    if (!p.date) return false;
+    const parts = p.date.split("-");
+    return parts.length >= 3 && +parts[1] === month.m + 1 && +parts[0] === month.y;
+  });
+
+  // Reviews this month
+  const mReviews = Object.entries(data.reviews || {}).filter(([, r]) => {
+    if (!r.date) return false;
+    const p = r.date.split("/");
+    return p.length >= 3 && +p[1] === month.m + 1 && +p[2] === month.y;
+  });
+
+  const bestFilm = mReviews.sort((a, b) => (b[1].avg || 0) - (a[1].avg || 0))[0];
+  const avgScore = mReviews.length > 0 ? (mReviews.reduce((s, [, r]) => s + (r.avg || 0), 0) / mReviews.length).toFixed(1) : null;
+
+  return (
+    <div style={S.sec}>
+      <h2 style={{ ...S.secTitle, color: T.accent1 }}>📸 Recap del Mese</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <button onClick={prev} style={{ ...S.emojiBtn, fontSize: 18, padding: "6px 12px" }}>←</button>
+        <span style={{ fontSize: 18, fontWeight: 900, color: T.text }}>{MONTHS[month.m]} {month.y}</span>
+        <button onClick={next} style={{ ...S.emojiBtn, fontSize: 18, padding: "6px 12px" }}>→</button>
+      </div>
+
+      {/* Stats cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: "14px 12px", background: `${T.accent2}14`, border: `1px solid ${T.accent2}26`, borderRadius: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: T.accent2 }}>{mWatched.length}</div>
+          <div style={{ fontSize: 11, color: T.muted }}>🎬 Film visti</div>
+        </div>
+        <div style={{ padding: "14px 12px", background: `${T.accent1}14`, border: `1px solid ${T.accent1}26`, borderRadius: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: T.accent1 }}>{mPlans.length}</div>
+          <div style={{ fontSize: 11, color: T.muted }}>🕯️ Serate</div>
+        </div>
+        <div style={{ padding: "14px 12px", background: `rgba(236,72,153,0.08)`, border: `1px solid rgba(236,72,153,0.2)`, borderRadius: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "#ec4899" }}>{mReviews.length}</div>
+          <div style={{ fontSize: 11, color: T.muted }}>📝 Recensioni</div>
+        </div>
+        <div style={{ padding: "14px 12px", background: `rgba(139,92,246,0.08)`, border: `1px solid rgba(139,92,246,0.2)`, borderRadius: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "#8b5cf6" }}>{avgScore || "-"}</div>
+          <div style={{ fontSize: 11, color: T.muted }}>⭐ Media voto</div>
+        </div>
+      </div>
+
+      {/* Best film */}
+      {bestFilm && (
+        <div style={{ padding: "12px 14px", background: `${T.accent1}14`, border: `1px solid ${T.accent1}26`, borderRadius: 14, marginBottom: 12, animation: "fade-in 0.3s ease" }}>
+          <div style={{ fontSize: 10, color: T.muted }}>👑 Miglior film del mese</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: T.accent1 }}>{bestFilm[0]}</div>
+          <div style={{ fontSize: 13, color: T.text }}>{bestFilm[1].avg}/10</div>
+        </div>
+      )}
+
+      {/* Film list */}
+      {mWatched.length > 0 && <h3 style={{ fontSize: 14, color: T.accent2, margin: "0 0 6px" }}>🎬 Film visti</h3>}
+      {mWatched.map((w, i) => (
+        <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i * 0.05}s both` }}>
+          <span>🎬</span><span style={S.itemText}>{w.title}</span><span style={{ fontSize: 11, color: T.muted }}>{w.date}</span>
+          {(data.reviews || {})[w.title]?.avg && <span style={{ ...S.scoreBadge, fontSize: 11, padding: "1px 6px" }}>{data.reviews[w.title].avg}/10</span>}
+        </div>
+      ))}
+
+      {mWatched.length === 0 && mPlans.length === 0 && mReviews.length === 0 && (
+        <p style={S.empty}>Nessuna attività in {MONTHS[month.m]} {month.y}</p>
+      )}
+    </div>
+  );
+}
+
 /* ═══ CALENDAR ═══ */
 function Calendar({ data }) {
   const T = useContext(ThemeCtx);
