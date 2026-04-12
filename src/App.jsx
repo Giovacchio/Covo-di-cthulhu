@@ -890,9 +890,22 @@ function Wheel({ movies }) {
 
 /* ═══ WATCHED ═══ */
 function Watched({ data, save }) {
+  const T = useContext(ThemeCtx);
   const [filter, setFilter] = useState("all");
+  const [detail, setDetail] = useState(null);
   const mw = (m) => { tap(); playSound(); save({ ...data, movies: data.movies.filter(x => x !== m), watched: [...data.watched, { title: m, date: new Date().toLocaleDateString("it-IT") }] }); };
   const uw = (t) => { tap(); save({ ...data, watched: data.watched.filter(w => w.title !== t), movies: [...data.movies, t] }); };
+
+  const fetchDetail = async (title) => {
+    tap(); setDetail({ title, loading: true });
+    try {
+      const q = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
+      const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&language=it-IT&page=1`);
+      const d = await res.json();
+      setDetail({ title, tmdb: d.results?.[0] || null });
+    } catch (e) { setDetail({ title, tmdb: null }); }
+  };
+
   const months = {}; data.watched.forEach(w => { if (!w.date) return; const parts = w.date.split("/"); if (parts.length >= 2) { const key = `${parts[1]}/${parts[2]||parts[1]}`; months[key] = `${["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"][+parts[1]]||parts[1]} ${parts[2]||""}`; } });
   const monthKeys = Object.keys(months);
   const filtered = filter === "all" ? data.watched : data.watched.filter(w => { if (!w.date) return false; const p = w.date.split("/"); return `${p[1]}/${p[2]||p[1]}` === filter; });
@@ -902,10 +915,38 @@ function Watched({ data, save }) {
       {monthKeys.length > 1 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}><button onClick={() => setFilter("all")} style={{ ...S.catChip, background: filter==="all"?"rgba(0,184,148,0.2)":"transparent", borderColor: filter==="all"?"#00b894":"rgba(255,255,255,0.06)" }}>Tutti ({data.watched.length})</button>{monthKeys.map(k => <button key={k} onClick={() => setFilter(k)} style={{ ...S.catChip, background: filter===k?"rgba(0,184,148,0.2)":"transparent", borderColor: filter===k?"#00b894":"rgba(255,255,255,0.06)" }}>{months[k]}</button>)}</div>}
       {filtered.length === 0 && <p style={S.empty}>Nessun film visto{filter !== "all" ? " in questo periodo" : " ancora"}!</p>}
       {filtered.map((w, i) => { const rev = (data.reviews||{})[w.title]; return (
-        <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, flexDirection: "column", alignItems: "stretch", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span>🎬</span><span style={S.itemText}>{w.title}</span><span style={{ fontSize: 11, color: "#7c8a6d" }}>{w.date}</span><button style={S.xBtn} onClick={() => uw(w.title)}>↩</button></div>
+        <div key={i} style={{ ...S.item, animation: `fade-in 0.3s ease ${i*0.04}s both`, flexDirection: "column", alignItems: "stretch", gap: 4, cursor: "pointer" }} onClick={() => fetchDetail(w.title)}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span>🎬</span><span style={S.itemText}>{w.title}</span>
+            <span style={{ fontSize: 10, color: T.muted }}>ℹ️</span>
+            <span style={{ fontSize: 11, color: "#7c8a6d" }}>{w.date}</span>
+            <button style={S.xBtn} onClick={(e) => { e.stopPropagation(); uw(w.title); }}>↩</button>
+          </div>
           {rev && <div style={{ display: "flex", gap: 8, alignItems: "center", paddingLeft: 26, fontSize: 11, color: "#7c8a6d" }}>{rev.avg !== undefined && <span style={{ ...S.scoreBadge, fontSize: 11, padding: "1px 6px" }}>{rev.avg}/10</span>}{rev.lui !== undefined && <span>🙋‍♂️ {rev.lui}</span>}{rev.lei !== undefined && <span>🙋‍♀️ {rev.lei}</span>}</div>}
         </div>); })}
+
+      {/* Film detail modal */}
+      {detail && (
+        <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fade-in 0.2s ease" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "80vh", overflow: "auto", borderRadius: 20, background: T.bg1 === "#0a1f16" ? "#132e1a" : "#e8e6df", border: `1px solid ${T.border}`, padding: 20, animation: "pop-in 0.3s ease", display: "flex", flexDirection: "column", gap: 12 }}>
+            {detail.loading && <p style={{ textAlign: "center", color: T.muted, padding: 20 }}>Cercando info... 🔍</p>}
+            {!detail.loading && detail.tmdb && (
+              <>
+                {detail.tmdb.poster_path && <img src={`https://image.tmdb.org/t/p/w342${detail.tmdb.poster_path}`} alt="" style={{ width: "100%", borderRadius: 14, maxHeight: 300, objectFit: "cover" }} />}
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: T.text, margin: 0 }}>{detail.tmdb.title}</h3>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {detail.tmdb.release_date && <span style={{ fontSize: 12, color: T.muted }}>📅 {detail.tmdb.release_date.slice(0, 4)}</span>}
+                  {detail.tmdb.vote_average > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 8, background: `${T.accent1}22`, color: T.accent1 }}>⭐ {detail.tmdb.vote_average.toFixed(1)}/10</span>}
+                  {detail.tmdb.original_language && <span style={{ fontSize: 12, color: T.muted }}>🌍 {detail.tmdb.original_language.toUpperCase()}</span>}
+                </div>
+                {detail.tmdb.overview && <p style={{ fontSize: 13, color: T.text, lineHeight: 1.5, margin: 0 }}>{detail.tmdb.overview}</p>}
+              </>
+            )}
+            {!detail.loading && !detail.tmdb && <p style={{ textAlign: "center", color: T.muted, padding: 20 }}>Nessun risultato trovato su TMDB per "{detail.title}"</p>}
+            <button onClick={() => setDetail(null)} style={{ ...S.bigBtn, marginTop: 4 }}>Chiudi</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
