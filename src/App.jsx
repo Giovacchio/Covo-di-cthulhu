@@ -64,11 +64,11 @@ const WISH_TYPES = [
   { id: "altro_w", icon: "💫", label: "Altro" },
 ];
 
-const RAND_ACT = ["Film a casa", "Cinema", "Passeggiata", "Gioco da tavolo", "Cuciniamo insieme", "Serata serie TV", "Videogiochi insieme", "Picnic", "Spa in casa"];
+const RAND_ACT = ["Film a casa", "Cinema", "Passeggiata", "Gioco da tavolo", "Cuciniamo insieme", "Serata serie TV", "Videogiochi insieme", "Picnic", "Spa in casa","Mangiamo schifezze"];
 const RAND_FOOD = ["Pizza", "Sushi", "Pasta", "Hamburger", "Poke bowl", "Tacos", "Popcorn e snack", "Aperitivo", "Dolci fatti in casa"];
-const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", "Cioccolata calda", "Spritz", "Succo di frutta", "Bollicine"];
+const RAND_DRINK = ["Vino rosso", "Birra artigianale", "Cocktail", "Tè caldo", "Cioccolata calda", "Spritz", "Succo di frutta", "Bollicine","Tisanina"];
 
-const QUICK_MSGS = ["Mi manchi 💜","Stasera film? 🎬","Ti amo 💕","Pensavo a te 🌙","Ho fame 🍕","Abbraccio? 🤗","Sei bellissim* ✨","Countdown: torno da te! 🏃"];
+const QUICK_MSGS = ["Mi manchi 💜","Stasera film? 🎬","Mi piaci tantissimo 💕","Pensavo a te 🌙","Ho fame 🍕","Abbraccio? 🤗","Sei bellissim* ✨","Countdown: torno da te! 🏃"];
 const TMDB_KEY = "0f9faaec733c2818c364356c4fd6f2ea";
 const PJ_EMOJIS = ["👘", "🧸", "🐻", "🦊", "🐙", "🌙", "⭐", "🔮", "🧶", "🎀", "🐱", "🐰"];
 const PROFILE_EMOJIS = ["🐙", "🦑", "🐉", "🦊", "🐱", "🐻", "🦋", "🌙", "⭐", "🔮", "🎀", "👑", "🌸", "🍄", "🦄", "🐸"];
