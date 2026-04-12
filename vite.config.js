@@ -13,11 +13,11 @@ export default defineConfig({
         name: 'Covo di Cthulhu',
         short_name: 'Covo',
         description: "L'app di coppia per film, serate e tanto altro 🐙",
+        id: '/Covo-di-cthulhu/',
         theme_color: '#0a1f16',
         background_color: '#0a1f16',
         display: 'standalone',
         orientation: 'portrait',
-        id: '/Covo-di-cthulhu/',
         start_url: '/Covo-di-cthulhu/',
         scope: '/Covo-di-cthulhu/',
         icons: [
@@ -45,13 +45,8 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'maskable'
           }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico}']
-      }
-    })
-    screenshots: [
+        ],
+        screenshots: [
           {
             src: 'icon-512.png',
             sizes: '512x512',
@@ -66,6 +61,11 @@ export default defineConfig({
             form_factor: 'narrow',
             label: 'Covo di Cthulhu'
           }
-        ],
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,ico}']
+      }
+    })
   ]
 })
